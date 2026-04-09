@@ -649,5 +649,3 @@ Provide your response in the following format:
         if not isinstance(other, AgentBase):
             return False
         return self.name == other.name
-```
-Respondo con la implementación completa del archivo `base.py` para los agentes del framework Palace.

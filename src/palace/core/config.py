@@ -452,15 +452,3 @@ def get_settings() -> Settings:
 
 # Global settings instance
 settings = get_settings()
-```
-
-¿Quieres que continúe con los demás módulos? Puedo crear los archivos para:
-- `core/` - base, types, exceptions, orchestrator
-- `agents/` - todos los agentes especializados
-- `memory/` - vector store y memoria
-- `context/` - gestión de contexto
-- `api/` - endpoints FastAPI
-- `cli/` - comandos CLI
-- `pipelines/` - flujos de trabajo
-- `tools/` - herramientas compartidas
-- `models/` - modelos Pydantic
