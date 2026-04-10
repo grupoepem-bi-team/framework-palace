@@ -18,7 +18,7 @@ Este documento describe el estado de implementación de los módulos del framewo
 | 8. API | ✅ Completado | Endpoints REST implementados con integración real al framework |
 | 9. CLI | ✅ Completado | Comandos CLI implementados con integración real al framework |
 | 10. Zep | ✅ Completado | Integración con Zep implementada en vector store |
-| 11. Refinamiento | ❌ Pendiente | Por implementar |
+| 11. Refinamiento | ✅ Completado | Cost tracking, logging estructurado, resiliencia, calidad de memoria |
 
 ## Detalle por Módulo
 
@@ -299,14 +299,68 @@ src/palace/
 - Diseñado para integración desacoplada
 - Listo para producción
 
-### ❌ Módulo 11: Refinamiento
-**Estado:** Pendiente
-**Pendientes según especificación:**
-- Manejo de errores robusto
-- Logging estructurado
-- Control de costos (uso de modelos)
-- Mejora de orquestación entre agentes
-- Filtrado de datos irrelevantes en memoria
+### ✅ Módulo 11: Refinamiento
+**Estado:** Completado
+**Ubicación:** `src/palace/core/` (costs.py, logging_config.py, resilience.py, memory_quality.py)
+**Componentes implementados:**
+
+- ✅ `costs.py` — Control de costos de modelos LLM
+  - `CostTier` — Enum con 5 niveles: FREE, LOW, MEDIUM, HIGH, PREMIUM
+  - `ModelPricing` — Precios por modelo (input/output por 1K tokens)
+  - `UsageRecord` — Registro de uso con tokens, costo, timestamp
+  - `CostBudget` — Presupuesto por proyecto (diario, mensual, por tarea) con alertas
+  - `CostTracker` — Rastreador principal con 11 métodos:
+    - `record_usage()` — Registrar uso de modelo con cálculo automático de costo
+    - `estimate_cost()` — Estimar costo antes de ejecución
+    - `check_budget()` — Verificar si está dentro del presupuesto
+    - `set_budget()` — Configurar presupuesto por proyecto
+    - `get_usage_report()` — Reporte de uso filtrable (por proyecto, modelo, agente, fechas)
+    - `get_project_spend()` — Gasto actual del proyecto
+    - `add_model_pricing()` — Añadir precios de modelos
+    - `get_model_recommendation()` — Recomendación de modelo según tarea y presupuesto
+  - Precios predefinidos para: qwen3.5, qwen3-coder-next, deepseek-v3.2, mistral-large, gemma4:31b
+
+- ✅ `logging_config.py` — Logging estructurado
+  - `LogLevel` — Enum con niveles DEBUG, INFO, WARNING, ERROR, CRITICAL
+  - `LoggingConfig` — Configuración de logging (formato JSON/console, timestamp, caller, archivo)
+  - `configure_logging()` — Configuración principal de structlog con procesadores:
+    - Context variables merge
+    - Level filtering
+    - Logger name y log level
+    - ISO timestamps
+    - Stack info y exception formatting
+    - JSON renderer (producción) / Console renderer con colores (desarrollo)
+  - `get_logger()` — Obtener logger estructurado
+  - `bind_context()` / `unbind_context()` / `clear_context()` / `get_context()` — Gestión de contexto de logging
+  - `new_correlation_id()` / `set_correlation_id()` / `get_correlation_id()` — IDs de correlación para rastrear flujos
+  - `log_performance()` — Context manager para medir y loguear duración de operaciones
+
+- ✅ `resilience.py` — Patrones de resiliencia
+  - `CircuitState` — Enum: CLOSED, OPEN, HALF_OPEN
+  - `RetryConfig` — Configuración de retry con backoff exponencial y jitter
+  - `CircuitBreakerConfig` — Configuración de circuit breaker (threshold, recovery timeout, success threshold)
+  - `CircuitOpenError` — Excepción cuando el circuit breaker está abierto
+  - `RetryWithBackoff` — Retry con backoff exponencial y jitter configurable
+  - `CircuitBreaker` — Circuit breaker completo con:
+    - `call()` — Ejecutar función protegida
+    - `is_available()` — Verificar disponibilidad
+    - `get_state()` / `get_stats()` — Estado y estadísticas
+    - `reset()` / `force_open()` / `force_close()` — Control manual
+  - `ModelFallback` — Estrategia de fallback para modelos LLM con cadena de prioridad
+  - `retry()` — Función de conveniencia a nivel de módulo
+
+- ✅ `memory_quality.py` — Calidad de memoria
+  - `QualityScore` — Enum: HIGH (≥0.8), MEDIUM (0.5-0.8), LOW (0.3-0.5), IRRELEVANT (<0.3)
+  - `CleanupPolicy` — Política de limpieza (max_entries, min_relevance, expiración, deduplicación)
+  - `MemoryQualityChecker` — Verificador de calidad con 7 métodos:
+    - `check_quality()` — Scoring 0.0-1.0 basado en contenido, acceso, recencia, metadata
+    - `classify_quality()` — Clasificación por rango de score
+    - `is_duplicate()` — Detección de duplicados por normalización y comparación
+    - `should_expire()` — Verificar expiración según política y tipo de memoria
+    - `get_entries_to_cleanup()` — Identificar entradas a eliminar (baja calidad, expiradas, duplicadas)
+    - `deduplicate_entries()` — Eliminar duplicados manteniendo el de mayor score
+    - `score_entry()` — Scoring completo con recomendación (keep/remove/review)
+  - `MemoryCleanupTask` — Tarea de limpieza asíncrona con estadísticas acumulativas
 
 ## Estado General del Proyecto
 
@@ -323,14 +377,13 @@ src/palace/
 ### ⚠️ Parcialmente Implementados (0 módulos)
 (Ningún módulo queda parcialmente implementado)
 
-### ❌ Pendientes (1 módulo)
-- Refinamiento (Módulo 11)
+### ✅ Completados (9 módulos) — Todos los módulos de funcionalidad implementados
 
 ## Próximos Pasos Recomendados
 
-1. **Implementar refinamiento (Módulo 11)**: Añadir manejo de errores, logging estructurado, control de costos, mejora de orquestación
-2. **Tests y calidad**: Crear tests unitarios e integración para todos los módulos
-3. **Documentación**: Guías de uso, ejemplos y API docs
+1. **Tests y calidad**: Crear tests unitarios e integración para todos los módulos
+2. **Documentación**: Guías de uso, ejemplos y API docs
+3. **Optimización**: Performance tuning, security hardening
 
 ## Notas Técnicas
 
@@ -344,7 +397,8 @@ src/palace/
 - API y CLI integrados directamente con ContextManager y MemoryStore (sin acceder a atributos privados del Orchestrator)
 - CLI incluye comando `attach` para conectar a proyectos existentes y cargar contexto
 - Pipelines con resolución automática de dependencias y ejecución paralela
+- Refinamiento: cost tracking, logging estructurado, circuit breakers, calidad de memoria
 
 ---
-*Última actualización: 2025-04-09 — Módulo 7 (Pipeline) completado*
-*Basado en análisis del código en `framework-palace/src/*`*
+*Última actualización: 2025-04-09 — Módulo 11 (Refinamiento) completado — Todos los módulos implementados*
+*Basado en análisis del código en `framework-palace/src/*` — 57 archivos Python*

@@ -11,9 +11,9 @@ Este documento lista las tareas pendientes organizadas por módulo, basadas en e
 
 | Prioridad | Módulo | Descripción |
 |-----------|--------|-------------|
-| 🟡 Media | Módulo 11 (Refinamiento) | Manejo de errores, logging, control de costos |
 | 🟢 Baja | Tests y Calidad | Tests unitarios e integración |
 | 🟢 Baja | Documentación | Guías de uso, ejemplos, API docs |
+| 🟢 Baja | Optimización | Performance tuning, security hardening |
 
 ---
 
@@ -246,47 +246,68 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-## 🔧 Módulo 11: Refinamiento
+## 🔧 Módulo 11: Refinamiento — ✅ COMPLETADO
 
-**Estado:** ❌ No implementado  
-**Ubicación:** Varios módulos
+**Estado:** ✅ Completado
+**Ubicación:** `src/palace/core/` (costs.py, logging_config.py, resilience.py, memory_quality.py)
 
-### Tareas Pendientes
+### Componentes Implementados
 
-#### Manejo de Errores Robusto
-- [ ] Implementar excepciones específicas por dominio
-- [ ] Añadir retry logic para llamadas a LLM
-- [ ] Implementar circuit breakers para servicios externos
-- [ ] Crear sistema de fallback para modelos no disponibles
-- [ ] Añadir validación de inputs en todos los componentes
+#### Control de Costos (`costs.py`)
+- [x] `CostTier` — Enum con 5 niveles: FREE, LOW, MEDIUM, HIGH, PREMIUM
+- [x] `ModelPricing` — Precios por modelo (input/output por 1K tokens)
+- [x] `UsageRecord` — Registro de uso con tokens, costo, timestamp
+- [x] `CostBudget` — Presupuesto por proyecto (diario, mensual, por tarea) con alertas
+- [x] `CostTracker` — Rastreador principal con 11 métodos:
+  - [x] `record_usage()` — Registrar uso de modelo con cálculo automático de costo
+  - [x] `estimate_cost()` — Estimar costo antes de ejecución
+  - [x] `check_budget()` — Verificar si está dentro del presupuesto
+  - [x] `set_budget()` — Configurar presupuesto por proyecto
+  - [x] `get_usage_report()` — Reporte de uso filtrable (por proyecto, modelo, agente, fechas)
+  - [x] `get_project_spend()` — Gasto actual del proyecto
+  - [x] `add_model_pricing()` — Añadir precios de modelos
+  - [x] `get_model_recommendation()` — Recomendación de modelo según tarea y presupuesto
+- [x] Precios predefinidos para: qwen3.5, qwen3-coder-next, deepseek-v3.2, mistral-large, gemma4:31b
 
-#### Logging Estructurado
-- [ ] Configurar logging estructurado (JSON) para producción
-- [ ] Añadir correlation IDs para rastrear flujos completos
-- [ ] Implementar niveles de logging apropiados (DEBUG, INFO, WARN, ERROR)
-- [ ] Añadir métricas de performance (latencia, uso de tokens)
-- [ ] Integrar con sistemas de observabilidad (OpenTelemetry)
+#### Logging Estructurado (`logging_config.py`)
+- [x] `LogLevel` — Enum con niveles DEBUG, INFO, WARNING, ERROR, CRITICAL
+- [x] `LoggingConfig` — Configuración de logging (formato JSON/console, timestamp, caller, archivo)
+- [x] `configure_logging()` — Configuración principal de structlog con procesadores
+- [x] `get_logger()` — Obtener logger estructurado
+- [x] `bind_context()` / `unbind_context()` / `clear_context()` / `get_context()` — Gestión de contexto
+- [x] `new_correlation_id()` / `set_correlation_id()` / `get_correlation_id()` — IDs de correlación
+- [x] `log_performance()` — Context manager para medir duración de operaciones
 
-#### Control de Costos
-- [ ] Implementar tracking de tokens por modelo
-- [ ] Añadir límites de costo por proyecto/sesión
-- [ ] Implementar caching de respuestas de LLM
-- [ ] Crear sistema de priorización para tareas costosas
-- [ ] Añadir estimaciones de costo antes de ejecución
+#### Patrones de Resiliencia (`resilience.py`)
+- [x] `CircuitState` — Enum: CLOSED, OPEN, HALF_OPEN
+- [x] `RetryConfig` — Configuración de retry con backoff exponencial y jitter
+- [x] `CircuitBreakerConfig` — Configuración de circuit breaker
+- [x] `CircuitOpenError` — Excepción cuando el circuit breaker está abierto
+- [x] `RetryWithBackoff` — Retry con backoff exponencial y jitter configurable
+- [x] `CircuitBreaker` — Circuit breaker completo con `call()`, `is_available()`, `get_state()`, `get_stats()`, `reset()`
+- [x] `ModelFallback` — Estrategia de fallback para modelos LLM con cadena de prioridad
+- [x] `retry()` — Función de conveniencia a nivel de módulo
 
-#### Mejora de Orquestación
-- [ ] Optimizar selección de agentes por tarea
-- [ ] Implementar load balancing entre agentes similares
-- [ ] Añadir timeout y deadlines para tareas
-- [ ] Implementar concurrent execution para tareas independientes
-- [ ] Crear sistema de checkpoint/recovery para tareas largas
+#### Calidad de Memoria (`memory_quality.py`)
+- [x] `QualityScore` — Enum: HIGH (≥0.8), MEDIUM (0.5-0.8), LOW (0.3-0.5), IRRELEVANT (<0.3)
+- [x] `CleanupPolicy` — Política de limpieza configurable
+- [x] `MemoryQualityChecker` — Verificador de calidad con 7 métodos:
+  - [x] `check_quality()` — Scoring 0.0-1.0 basado en contenido, acceso, recencia, metadata
+  - [x] `classify_quality()` — Clasificación por rango de score
+  - [x] `is_duplicate()` — Detección de duplicados por normalización y comparación
+  - [x] `should_expire()` — Verificar expiración según política y tipo de memoria
+  - [x] `get_entries_to_cleanup()` — Identificar entradas a eliminar
+  - [x] `deduplicate_entries()` — Eliminar duplicados manteniendo el de mayor score
+  - [x] `score_entry()` — Scoring completo con recomendación (keep/remove/review)
+- [x] `MemoryCleanupTask` — Tarea de limpieza asíncrona con estadísticas acumulativas
 
-#### Calidad de Memoria
-- [ ] Implementar deduplicación de entradas en memoria vectorial
-- [ ] Añadir expiración automática para datos temporales
-- [ ] Implementar scoring de relevancia para filtrar información
-- [ ] Crear sistema de limpieza periódica
-- [ ] Añadir validación de calidad para datos almacenados
+### Mejoras Pendientes (Baja Prioridad)
+- [ ] Integrar CostTracker en llamadas reales a LLM del framework
+- [ ] Integrar CircuitBreaker en Orchestrator para protección de agentes
+- [ ] Integrar MemoryQualityChecker en el ciclo de vida de MemoryStore
+- [ ] Añadir validación de inputs con Pydantic en todos los endpoints API
+- [ ] Implementar checkpoint/recovery para tareas largas en pipelines
+- [ ] Integrar con OpenTelemetry para observabilidad
 
 ---
 
@@ -344,8 +365,8 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ### Fase 2 - Funcionalidad Avanzada (Media Prioridad) ✅ Completada
 1. ~~Implementar pipelines (Módulo 7)~~ ✅ Completado
-2. Completar refinamientos (Módulo 11) — **Siguiente paso**
-3. Mejorar orquestación y optimizaciones
+2. ~~Completar refinamientos (Módulo 11)~~ ✅ Completado
+3. Mejorar orquestación y optimizaciones — **Siguiente paso**
 
 ### Fase 3 - Producción (Baja Prioridad)
 1. Tests completos y CI/CD
@@ -379,4 +400,4 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-**Nota:** Este documento se actualizó el 2025-04-09. Los **Módulos 4, 6, 7, 8 y 9** fueron completados. El siguiente paso es el **Módulo 11 (Refinamiento)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.
+**Nota:** Este documento se actualizó el 2025-04-09. **Todos los módulos de funcionalidad (1-11) fueron completados.** Los siguientes pasos son **Tests, Documentación y Optimización**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.
