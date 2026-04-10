@@ -72,26 +72,26 @@ class TestModelConfig:
     def test_default_values(self):
         """Test default model assignments."""
         config = ModelConfig()
-        assert config.orchestrator == "qwen3.5"
-        assert config.devops == "qwen3.5"
-        assert config.backend == "qwen3-coder-next"
-        assert config.frontend == "qwen3-coder-next"
-        assert config.infra == "qwen3-coder-next"
-        assert config.dba == "deepseek-v3.2"
-        assert config.qa == "gemma4:31b"
-        assert config.designer == "mistral-large"
-        assert config.reviewer == "mistral-large"
+        assert config.orchestrator == "qwen3.5:cloud"
+        assert config.devops == "qwen3.5:cloud"
+        assert config.backend == "qwen3-coder-next:cloud"
+        assert config.frontend == "qwen3-coder-next:cloud"
+        assert config.infra == "qwen3-coder-next:cloud"
+        assert config.dba == "deepseek-v3.2:cloud"
+        assert config.qa == "gemma4:31b-cloud"
+        assert config.designer == "mistral-large-3:675b-cloud"
+        assert config.reviewer == "mistral-large-3:675b-cloud"
         assert config.embedding == "nomic-embed-text"
 
     def test_get_model_for_agent(self):
         """Test getting model for specific agent."""
         config = ModelConfig()
 
-        assert config.get_model_for_agent("backend") == "qwen3-coder-next"
-        assert config.get_model_for_agent("frontend") == "qwen3-coder-next"
-        assert config.get_model_for_agent("dba") == "deepseek-v3.2"
-        assert config.get_model_for_agent("qa") == "gemma4:31b"
-        assert config.get_model_for_agent("reviewer") == "mistral-large"
+        assert config.get_model_for_agent("backend") == "qwen3-coder-next:cloud"
+        assert config.get_model_for_agent("frontend") == "qwen3-coder-next:cloud"
+        assert config.get_model_for_agent("dba") == "deepseek-v3.2:cloud"
+        assert config.get_model_for_agent("qa") == "gemma4:31b-cloud"
+        assert config.get_model_for_agent("reviewer") == "mistral-large-3:675b-cloud"
 
     def test_get_model_for_unknown_agent(self):
         """Test getting model for unknown agent raises error."""

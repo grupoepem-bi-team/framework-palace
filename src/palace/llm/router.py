@@ -15,19 +15,19 @@ Architecture:
     ┌─────────────────────────────────────────────────────────────┐
     │                      LLMRouter                              │
     │  ┌─────────────────────────────────────────────────────┐   │
-    │  │                 ModelRegistry                        │   │
-    │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ │   │
-    │  │  │ qwen3.5  │ │ qwen3-   │ │deepseek  │ │ mistral │ │   │
-    │  │  │          │ │ coder    │ │  -v3.2   │ │ -large  │ │   │
-    │  │  └──────────┘ └──────────┘ └──────────┘ └─────────┘ │   │
+    │  │                 ModelRegistry                                     │   │
+    │  │  ┌───────────────┐ ┌────────────────────┐ ┌─────────────────┐ ┌──────────────────────────┐ │   │
+    │  │  │qwen3.5:cloud  │ │qwen3-coder-next:   │ │deepseek-v3.2:   │ │mistral-large-3:          │ │   │
+    │  │  │               │ │cloud               │ │cloud            │ │675b-cloud                │ │   │
+    │  │  └───────────────┘ └────────────────────┘ └─────────────────┘ └──────────────────────────┘ │   │
     │  └─────────────────────────────────────────────────────┘   │
     │                           │                                 │
     │  ┌─────────────────────────────────────────────────────┐   │
     │  │                 RoleMapper                           │   │
-    │  │  orchestrator → qwen3.5                              │   │
-    │  │  backend      → qwen3-coder-next                     │   │
-    │  │  dba          → deepseek-v3.2                        │   │
-    │  │  reviewer     → mistral-large                        │   │
+    │  │  orchestrator → qwen3.5:cloud                        │   │
+    │  │  backend      → qwen3-coder-next:cloud               │   │
+    │  │  dba          → deepseek-v3.2:cloud                  │   │
+    │  │  reviewer     → mistral-large-3:675b-cloud            │   │
     │  └─────────────────────────────────────────────────────┘   │
     │                           │                                 │
     │  ┌─────────────────────────────────────────────────────┐   │
@@ -51,7 +51,7 @@ Usage:
     model = router.route_by_task(task_description="Create a REST API endpoint")
 
     # Get model for specific provider
-    model_config = router.get_model("qwen3-coder-next")
+    model_config = router.get_model("qwen3-coder-next:cloud")
 """
 
 from dataclasses import dataclass, field
@@ -278,7 +278,7 @@ class ModelConfig:
     """
 
     name: str
-    """Unique model identifier (e.g., 'qwen3-coder-next')."""
+    """Unique model identifier (e.g., 'qwen3-coder-next:cloud')."""
 
     provider: str
     """Provider name (e.g., 'ollama', 'openai')."""
@@ -359,28 +359,28 @@ class RoleMapper:
 
     # Default role to model mapping
     DEFAULT_ROLE_MAPPING: Dict[AgentRole, str] = {
-        AgentRole.ORCHESTRATOR: "qwen3.5",
-        AgentRole.BACKEND: "qwen3-coder-next",
-        AgentRole.FRONTEND: "qwen3-coder-next",
-        AgentRole.DEVOPS: "qwen3.5",
-        AgentRole.INFRA: "qwen3-coder-next",
-        AgentRole.DBA: "deepseek-v3.2",
-        AgentRole.QA: "gemma4:31b",
-        AgentRole.DESIGNER: "mistral-large",
-        AgentRole.REVIEWER: "mistral-large",
+        AgentRole.ORCHESTRATOR: "qwen3.5:cloud",
+        AgentRole.BACKEND: "qwen3-coder-next:cloud",
+        AgentRole.FRONTEND: "qwen3-coder-next:cloud",
+        AgentRole.DEVOPS: "qwen3.5:cloud",
+        AgentRole.INFRA: "qwen3-coder-next:cloud",
+        AgentRole.DBA: "deepseek-v3.2:cloud",
+        AgentRole.QA: "gemma4:31b-cloud",
+        AgentRole.DESIGNER: "mistral-large-3:675b-cloud",
+        AgentRole.REVIEWER: "mistral-large-3:675b-cloud",
     }
 
     # Alternative models for each role (fallback)
     FALLBACK_ROLE_MAPPING: Dict[AgentRole, List[str]] = {
-        AgentRole.ORCHESTRATOR: ["qwen3-coder-next", "mistral-large"],
-        AgentRole.BACKEND: ["qwen3.5", "deepseek-v3.2"],
-        AgentRole.FRONTEND: ["qwen3.5", "deepseek-v3.2"],
-        AgentRole.DEVOPS: ["qwen3-coder-next", "mistral-large"],
-        AgentRole.INFRA: ["qwen3.5", "deepseek-v3.2"],
-        AgentRole.DBA: ["qwen3-coder-next", "mistral-large"],
-        AgentRole.QA: ["qwen3-coder-next", "mistral-large"],
-        AgentRole.DESIGNER: ["qwen3.5", "qwen3-coder-next"],
-        AgentRole.REVIEWER: ["qwen3.5", "deepseek-v3.2"],
+        AgentRole.ORCHESTRATOR: ["qwen3-coder-next:cloud", "mistral-large-3:675b-cloud"],
+        AgentRole.BACKEND: ["qwen3.5:cloud", "deepseek-v3.2:cloud"],
+        AgentRole.FRONTEND: ["qwen3.5:cloud", "deepseek-v3.2:cloud"],
+        AgentRole.DEVOPS: ["qwen3-coder-next:cloud", "mistral-large-3:675b-cloud"],
+        AgentRole.INFRA: ["qwen3.5:cloud", "deepseek-v3.2:cloud"],
+        AgentRole.DBA: ["qwen3-coder-next:cloud", "mistral-large-3:675b-cloud"],
+        AgentRole.QA: ["qwen3-coder-next:cloud", "mistral-large-3:675b-cloud"],
+        AgentRole.DESIGNER: ["qwen3.5:cloud", "qwen3-coder-next:cloud"],
+        AgentRole.REVIEWER: ["qwen3.5:cloud", "deepseek-v3.2:cloud"],
     }
 
     def __init__(self, custom_mapping: Optional[Dict[AgentRole, str]] = None):
@@ -624,7 +624,7 @@ class LLMRouter:
         >>>
         >>> # Route by role
         >>> model = router.route_by_role("backend")
-        >>> print(model.name)  # 'qwen3-coder-next'
+        >>> print(model.name)  # 'qwen3-coder-next:cloud'
         >>>
         >>> # Route by task
         >>> model = router.route_by_task(
@@ -633,7 +633,7 @@ class LLMRouter:
         ... )
         >>>
         >>> # Get model configuration
-        >>> config = router.get_model("qwen3-coder-next")
+        >>> config = router.get_model("qwen3-coder-next:cloud")
     """
 
     def __init__(
@@ -676,9 +676,9 @@ class LLMRouter:
         models = [
             # Qwen models
             ModelConfig(
-                name="qwen3.5",
+                name="qwen3.5:cloud",
                 provider="ollama",
-                display_name="Qwen 3.5",
+                display_name="Qwen 3.5 Cloud",
                 capabilities=ModelCapabilities(
                     code_generation=0.85,
                     code_review=0.80,
@@ -698,12 +698,12 @@ class LLMRouter:
                 temperature=0.7,
                 context_window=32768,
                 tags=["orchestration", "planning", "general"],
-                fallback_model="qwen3-coder-next",
+                fallback_model="qwen3-coder-next:cloud",
             ),
             ModelConfig(
-                name="qwen3-coder-next",
+                name="qwen3-coder-next:cloud",
                 provider="ollama",
-                display_name="Qwen 3 Coder Next",
+                display_name="Qwen 3 Coder Next Cloud",
                 capabilities=ModelCapabilities(
                     code_generation=0.95,
                     code_review=0.90,
@@ -723,12 +723,12 @@ class LLMRouter:
                 temperature=0.7,
                 context_window=32768,
                 tags=["coding", "backend", "frontend"],
-                fallback_model="qwen3.5",
+                fallback_model="qwen3.5:cloud",
             ),
             ModelConfig(
-                name="deepseek-v3.2",
+                name="deepseek-v3.2:cloud",
                 provider="ollama",
-                display_name="DeepSeek V3.2",
+                display_name="DeepSeek V3.2 Cloud",
                 capabilities=ModelCapabilities(
                     code_generation=0.90,
                     code_review=0.85,
@@ -748,12 +748,12 @@ class LLMRouter:
                 temperature=0.7,
                 context_window=65536,
                 tags=["database", "sql", "reasoning"],
-                fallback_model="qwen3-coder-next",
+                fallback_model="qwen3-coder-next:cloud",
             ),
             ModelConfig(
-                name="gemma4:31b",
+                name="gemma4:31b-cloud",
                 provider="ollama",
-                display_name="Gemma 4 31B",
+                display_name="Gemma 4 31B Cloud",
                 capabilities=ModelCapabilities(
                     code_generation=0.80,
                     code_review=0.88,
@@ -773,12 +773,12 @@ class LLMRouter:
                 temperature=0.7,
                 context_window=32768,
                 tags=["qa", "testing", "review"],
-                fallback_model="qwen3-coder-next",
+                fallback_model="qwen3-coder-next:cloud",
             ),
             ModelConfig(
-                name="mistral-large",
+                name="mistral-large-3:675b-cloud",
                 provider="ollama",
-                display_name="Mistral Large",
+                display_name="Mistral Large 3 675B Cloud",
                 capabilities=ModelCapabilities(
                     code_generation=0.82,
                     code_review=0.92,
@@ -798,7 +798,7 @@ class LLMRouter:
                 temperature=0.7,
                 context_window=32768,
                 tags=["architecture", "review", "design"],
-                fallback_model="qwen3.5",
+                fallback_model="qwen3.5:cloud",
             ),
         ]
 

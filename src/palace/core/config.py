@@ -67,50 +67,50 @@ class ModelConfig(BaseSettings):
         extra="ignore",
     )
 
-    # Orchestrator and DevOps use qwen3.5
+    # Orchestrator and DevOps use qwen3.5:cloud
     orchestrator: str = Field(
-        default="qwen3.5",
-        description="Model for orchestrator agent",
+        default="qwen3.5:cloud",
+        description="Model for orchestrator agent (Ollama Cloud)",
     )
     devops: str = Field(
-        default="qwen3.5",
-        description="Model for DevOps agent",
+        default="qwen3.5:cloud",
+        description="Model for DevOps agent (Ollama Cloud)",
     )
 
-    # Development agents use qwen3-coder-next
+    # Development agents use qwen3-coder-next:cloud
     backend: str = Field(
-        default="qwen3-coder-next",
-        description="Model for backend development agent",
+        default="qwen3-coder-next:cloud",
+        description="Model for backend development agent (Ollama Cloud)",
     )
     frontend: str = Field(
-        default="qwen3-coder-next",
-        description="Model for frontend development agent",
+        default="qwen3-coder-next:cloud",
+        description="Model for frontend development agent (Ollama Cloud)",
     )
     infra: str = Field(
-        default="qwen3-coder-next",
-        description="Model for infrastructure agent",
+        default="qwen3-coder-next:cloud",
+        description="Model for infrastructure agent (Ollama Cloud)",
     )
 
-    # DBA uses deepseek-v3.2
+    # DBA uses deepseek-v3.2:cloud
     dba: str = Field(
-        default="deepseek-v3.2",
-        description="Model for DBA agent",
+        default="deepseek-v3.2:cloud",
+        description="Model for DBA agent (Ollama Cloud)",
     )
 
-    # QA uses gemma4:31b
+    # QA uses gemma4:31b-cloud
     qa: str = Field(
-        default="gemma4:31b",
-        description="Model for QA agent",
+        default="gemma4:31b-cloud",
+        description="Model for QA agent (Ollama Cloud)",
     )
 
-    # Architecture and Review use mistral-large
+    # Architecture and Review use mistral-large-3:675b-cloud
     designer: str = Field(
-        default="mistral-large",
-        description="Model for designer agent",
+        default="mistral-large-3:675b-cloud",
+        description="Model for designer agent (Ollama Cloud)",
     )
     reviewer: str = Field(
-        default="mistral-large",
-        description="Model for reviewer agent",
+        default="mistral-large-3:675b-cloud",
+        description="Model for reviewer agent (Ollama Cloud)",
     )
 
     # Embedding model for vector memory
@@ -145,8 +145,7 @@ class ModelConfig(BaseSettings):
         agent_type_lower = agent_type.lower()
         if agent_type_lower not in model_mapping:
             raise ValueError(
-                f"Unknown agent type: {agent_type}. "
-                f"Valid types: {list(model_mapping.keys())}"
+                f"Unknown agent type: {agent_type}. Valid types: {list(model_mapping.keys())}"
             )
         return model_mapping[agent_type_lower]
 

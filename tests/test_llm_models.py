@@ -348,9 +348,9 @@ class TestPredefinedModels:
     """Tests for the pre-defined model configuration instances."""
 
     def test_qwen35_basic_properties(self):
-        assert QWEN_35.name == "qwen3.5"
+        assert QWEN_35.name == "qwen3.5:cloud"
         assert QWEN_35.provider == ModelProvider.OLLAMA
-        assert QWEN_35.display_name == "Qwen 3.5"
+        assert QWEN_35.display_name == "Qwen 3.5 Cloud"
         assert QWEN_35.context_window == 32768
 
     def test_qwen35_capabilities(self):
@@ -371,9 +371,9 @@ class TestPredefinedModels:
         assert cost == 0.0
 
     def test_qwen_coder_next_basic_properties(self):
-        assert QWEN_CODER_NEXT.name == "qwen3-coder-next"
+        assert QWEN_CODER_NEXT.name == "qwen3-coder-next:cloud"
         assert QWEN_CODER_NEXT.provider == ModelProvider.OLLAMA
-        assert QWEN_CODER_NEXT.display_name == "Qwen 3 Coder Next"
+        assert QWEN_CODER_NEXT.display_name == "Qwen 3 Coder Next Cloud"
         assert QWEN_CODER_NEXT.context_window == 32768
 
     def test_qwen_coder_next_capabilities(self):
@@ -396,9 +396,9 @@ class TestPredefinedModels:
         assert QWEN_CODER_NEXT.supports_role(AgentRole.ORCHESTRATOR) is False
 
     def test_deepseek_v32_basic_properties(self):
-        assert DEEPSEEK_V32.name == "deepseek-v3.2"
+        assert DEEPSEEK_V32.name == "deepseek-v3.2:cloud"
         assert DEEPSEEK_V32.provider == ModelProvider.OLLAMA
-        assert DEEPSEEK_V32.display_name == "DeepSeek V3.2"
+        assert DEEPSEEK_V32.display_name == "DeepSeek V3.2 Cloud"
         assert DEEPSEEK_V32.context_window == 16384
 
     def test_deepseek_v32_capabilities(self):
@@ -410,9 +410,9 @@ class TestPredefinedModels:
         assert AgentRole.DBA in DEEPSEEK_V32.roles
 
     def test_gemma_4_31b_basic_properties(self):
-        assert GEMMA_4_31B.name == "gemma4:31b"
+        assert GEMMA_4_31B.name == "gemma4:31b-cloud"
         assert GEMMA_4_31B.provider == ModelProvider.OLLAMA
-        assert GEMMA_4_31B.display_name == "Gemma 4 31B"
+        assert GEMMA_4_31B.display_name == "Gemma 4 31B Cloud"
         assert GEMMA_4_31B.context_window == 8192
 
     def test_gemma_4_31b_capabilities(self):
@@ -425,9 +425,9 @@ class TestPredefinedModels:
         assert AgentRole.QA in GEMMA_4_31B.roles
 
     def test_mistral_large_basic_properties(self):
-        assert MISTRAL_LARGE.name == "mistral-large"
+        assert MISTRAL_LARGE.name == "mistral-large-3:675b-cloud"
         assert MISTRAL_LARGE.provider == ModelProvider.OLLAMA
-        assert MISTRAL_LARGE.display_name == "Mistral Large"
+        assert MISTRAL_LARGE.display_name == "Mistral Large 3 675B Cloud"
         assert MISTRAL_LARGE.context_window == 32768
 
     def test_mistral_large_capabilities(self):
@@ -532,11 +532,11 @@ class TestModelsModelRegistry:
     def test_initialize_registers_default_models(self):
         ModelRegistry.initialize()
         names = ModelRegistry.get_names()
-        assert "qwen3.5" in names
-        assert "qwen3-coder-next" in names
-        assert "deepseek-v3.2" in names
-        assert "gemma4:31b" in names
-        assert "mistral-large" in names
+        assert "qwen3.5:cloud" in names
+        assert "qwen3-coder-next:cloud" in names
+        assert "deepseek-v3.2:cloud" in names
+        assert "gemma4:31b-cloud" in names
+        assert "mistral-large-3:675b-cloud" in names
         assert "nomic-embed-text" in names
 
     def test_initialize_idempotent(self):
@@ -577,9 +577,9 @@ class TestModelsModelRegistry:
 
     def test_get_model_by_name(self):
         ModelRegistry.initialize()
-        model = ModelRegistry.get("qwen3.5")
+        model = ModelRegistry.get("qwen3.5:cloud")
         assert model is not None
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_get_nonexistent_model_returns_none(self):
         result = ModelRegistry.get("nonexistent-model")
@@ -589,37 +589,37 @@ class TestModelsModelRegistry:
         ModelRegistry.initialize()
         model = ModelRegistry.get_for_role(AgentRole.BACKEND)
         assert model is not None
-        assert model.name == "qwen3-coder-next"
+        assert model.name == "qwen3-coder-next:cloud"
 
     def test_get_for_role_orchestrator(self):
         ModelRegistry.initialize()
         model = ModelRegistry.get_for_role(AgentRole.ORCHESTRATOR)
         assert model is not None
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_get_for_role_dba(self):
         ModelRegistry.initialize()
         model = ModelRegistry.get_for_role(AgentRole.DBA)
         assert model is not None
-        assert model.name == "deepseek-v3.2"
+        assert model.name == "deepseek-v3.2:cloud"
 
     def test_get_for_role_qa(self):
         ModelRegistry.initialize()
         model = ModelRegistry.get_for_role(AgentRole.QA)
         assert model is not None
-        assert model.name == "gemma4:31b"
+        assert model.name == "gemma4:31b-cloud"
 
     def test_get_for_role_designer(self):
         ModelRegistry.initialize()
         model = ModelRegistry.get_for_role(AgentRole.DESIGNER)
         assert model is not None
-        assert model.name == "mistral-large"
+        assert model.name == "mistral-large-3:675b-cloud"
 
     def test_get_for_role_reviewer(self):
         ModelRegistry.initialize()
         model = ModelRegistry.get_for_role(AgentRole.REVIEWER)
         assert model is not None
-        assert model.name == "mistral-large"
+        assert model.name == "mistral-large-3:675b-cloud"
 
     def test_get_for_role_unregistered_role_returns_none(self):
         # NOMIC_EMBED_TEXT has no roles, so a role with no mapping should return None
@@ -668,16 +668,16 @@ class TestModelsModelRegistry:
         ModelRegistry.initialize()
         names = ModelRegistry.get_names()
         assert isinstance(names, list)
-        assert "qwen3.5" in names
-        assert "qwen3-coder-next" in names
+        assert "qwen3.5:cloud" in names
+        assert "qwen3-coder-next:cloud" in names
 
     def test_set_role_mapping(self):
         ModelRegistry.initialize()
         # Override the backend role
-        ModelRegistry.set_role_mapping(AgentRole.BACKEND, "deepseek-v3.2")
+        ModelRegistry.set_role_mapping(AgentRole.BACKEND, "deepseek-v3.2:cloud")
         model = ModelRegistry.get_for_role(AgentRole.BACKEND)
         assert model is not None
-        assert model.name == "deepseek-v3.2"
+        assert model.name == "deepseek-v3.2:cloud"
 
     def test_set_role_mapping_unregistered_model_raises(self):
         ModelRegistry.initialize()
@@ -772,19 +772,19 @@ class TestConvenienceFunctions:
         ModelRegistry.initialize()
         model = get_model_for_role(AgentRole.BACKEND)
         assert model is not None
-        assert model.name == "qwen3-coder-next"
+        assert model.name == "qwen3-coder-next:cloud"
 
     def test_get_model_for_role_orchestrator(self):
         ModelRegistry.initialize()
         model = get_model_for_role(AgentRole.ORCHESTRATOR)
         assert model is not None
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_get_model_for_role_dba(self):
         ModelRegistry.initialize()
         model = get_model_for_role(AgentRole.DBA)
         assert model is not None
-        assert model.name == "deepseek-v3.2"
+        assert model.name == "deepseek-v3.2:cloud"
 
     def test_get_model_for_role_unmapped_raises(self):
         # Clear registry and mark as initialized so auto-init won't re-populate,
@@ -796,9 +796,9 @@ class TestConvenienceFunctions:
 
     def test_get_model_by_name(self):
         ModelRegistry.initialize()
-        model = get_model("qwen3.5")
+        model = get_model("qwen3.5:cloud")
         assert model is not None
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_get_model_by_name_not_found_raises(self):
         ModelRegistry.initialize()
@@ -817,8 +817,8 @@ class TestConvenienceFunctions:
         ModelRegistry.initialize()
         names = list_model_names()
         assert isinstance(names, list)
-        assert "qwen3.5" in names
-        assert "qwen3-coder-next" in names
+        assert "qwen3.5:cloud" in names
+        assert "qwen3-coder-next:cloud" in names
 
 
 # =====================================================================

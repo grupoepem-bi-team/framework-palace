@@ -209,10 +209,10 @@ class ModelConfig:
 
 # Orchestrator and DevOps models
 QWEN_35 = ModelConfig(
-    name="qwen3.5",
+    name="qwen3.5:cloud",
     provider=ModelProvider.OLLAMA,
-    display_name="Qwen 3.5",
-    description="Versatile model for orchestration and DevOps tasks",
+    display_name="Qwen 3.5 Cloud",
+    description="Versatile model for orchestration and DevOps tasks (Ollama Cloud)",
     context_window=32768,
     capabilities=[
         ModelCapability.REASONING,
@@ -231,10 +231,10 @@ QWEN_35 = ModelConfig(
 
 # Development models
 QWEN_CODER_NEXT = ModelConfig(
-    name="qwen3-coder-next",
+    name="qwen3-coder-next:cloud",
     provider=ModelProvider.OLLAMA,
-    display_name="Qwen 3 Coder Next",
-    description="Advanced code generation model for development tasks",
+    display_name="Qwen 3 Coder Next Cloud",
+    description="Advanced code generation model for development tasks (Ollama Cloud)",
     context_window=32768,
     capabilities=[
         ModelCapability.CODE_GENERATION,
@@ -254,10 +254,10 @@ QWEN_CODER_NEXT = ModelConfig(
 
 # Database specialist
 DEEPSEEK_V32 = ModelConfig(
-    name="deepseek-v3.2",
+    name="deepseek-v3.2:cloud",
     provider=ModelProvider.OLLAMA,
-    display_name="DeepSeek V3.2",
-    description="Specialized model for database design and SQL",
+    display_name="DeepSeek V3.2 Cloud",
+    description="Specialized model for database design and SQL (Ollama Cloud)",
     context_window=16384,
     capabilities=[
         ModelCapability.DATABASE,
@@ -276,10 +276,10 @@ DEEPSEEK_V32 = ModelConfig(
 
 # QA and Testing
 GEMMA_4_31B = ModelConfig(
-    name="gemma4:31b",
+    name="gemma4:31b-cloud",
     provider=ModelProvider.OLLAMA,
-    display_name="Gemma 4 31B",
-    description="Large model for quality assurance and testing",
+    display_name="Gemma 4 31B Cloud",
+    description="Large model for quality assurance and testing (Ollama Cloud)",
     context_window=8192,
     capabilities=[
         ModelCapability.TESTING,
@@ -299,10 +299,10 @@ GEMMA_4_31B = ModelConfig(
 
 # Architecture and Review
 MISTRAL_LARGE = ModelConfig(
-    name="mistral-large",
+    name="mistral-large-3:675b-cloud",
     provider=ModelProvider.OLLAMA,
-    display_name="Mistral Large",
-    description="Large model for architecture design and code review",
+    display_name="Mistral Large 3 675B Cloud",
+    description="Large model for architecture design and code review (Ollama Cloud)",
     context_window=32768,
     capabilities=[
         ModelCapability.ARCHITECTURE,
