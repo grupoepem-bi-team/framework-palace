@@ -163,6 +163,25 @@ if errorlevel 1 (
     )
 )
 echo  ✅ Dependencias instaladas
+
+:: ============================================================
+::  SOPORTE GLOBAL: Agregar Palace al PATH de Windows
+:: ============================================================
+echo.
+echo  Configurando acceso global al comando 'palace'...
+
+set "SCRIPTS_PATH=%PALACE_VENV%\Scripts"
+
+:: Usamos PowerShell para añadir la ruta al PATH del usuario de forma segura
+powershell -Command "[string]$oldPath = [Environment]::GetEnvironmentVariable('Path', 'User'); $newPath = '%SCRIPTS_PATH%'; if ($oldPath -notlike '*' + $newPath + '*') { [Environment]::SetEnvironmentVariable('Path', $oldPath + ';' + $newPath, 'User') }" >nul 2>&1
+
+if %errorlevel% equ 0 (
+    echo  ✅ Comando 'palace' registrado globalmente.
+    echo     ⚠️  IMPORTANTE: Debes REINICIAR tu terminal para que el cambio surta efecto.
+) else (
+    echo  ⚠️  No se pudo registrar el comando global automáticamente.
+    echo     Podrás usar el archivo 'palace-iniciar.bat' en tu proyecto.
+)
 echo.
 pause
 
