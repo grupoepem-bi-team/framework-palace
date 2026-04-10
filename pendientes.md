@@ -11,7 +11,6 @@ Este documento lista las tareas pendientes organizadas por módulo, basadas en e
 
 | Prioridad | Módulo | Descripción |
 |-----------|--------|-------------|
-| 🔴 Alta | Módulo 6 (Contexto) | Project Loader y Context Builder necesarios para integración |
 | 🟡 Media | Módulo 8 (API) | Endpoints REST para exponer funcionalidad |
 | 🟡 Media | Módulo 9 (CLI) | Comandos CLI para interacción |
 | 🟢 Baja | Módulo 7 (Pipeline) | Flujos de trabajo avanzados |
@@ -28,46 +27,75 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-## 🗂️ Módulo 6: Contexto
+## 🗂️ Módulo 6: Contexto — ✅ COMPLETADO
 
-**Estado:** ⚠️ Parcialmente implementado  
+**Estado:** ✅ Completado  
 **Ubicación:** `src/palace/context/`
 
-### Tareas Pendientes
+### Componentes Implementados
 
-#### Project Loader
-- [ ] Implementar clase `ProjectLoader` en `context/loader.py` o similar
-- [ ] Implementar carga de archivos desde directorio `/ai_context/`
-- [ ] Soporte para archivos:
-  - [ ] `architecture.md` - Documentación arquitectónica
-  - [ ] `stack.md` - Stack tecnológico
-  - [ ] `conventions.md` - Convenciones de código
-  - [ ] `decisions.md` - Decisiones arquitectónicas (ADRs)
-  - [ ] `constraints.md` - Restricciones del proyecto
-- [ ] Parseo inteligente de markdown a estructuras de datos
-- [ ] Cacheo de archivos cargados para mejor performance
+#### Project Loader (`loader.py`)
+- [x] Implementar clase `ProjectLoader`
+- [x] Carga de archivos desde directorio `/ai_context/`
+- [x] Soporte para archivos:
+  - [x] `architecture.md` - Documentación arquitectónica
+  - [x] `stack.md` - Stack tecnológico
+  - [x] `conventions.md` - Convenciones de código
+  - [x] `decisions.md` - Decisiones arquitectónicas (ADRs)
+  - [x] `constraints.md` - Restricciones del proyecto
+- [x] Parseo inteligente de markdown a estructuras de datos
+- [x] Cacheo de archivos cargados para mejor performance
+- [x] Estimación de tokens por archivo
 
-#### Context Builder
-- [ ] Implementar clase `ContextBuilder` en `context/builder.py` o similar
-- [ ] Combinar múltiples fuentes de contexto:
-  - [ ] Contexto del proyecto (archivos cargados)
-  - [ ] Memoria relevante (vector store)
-  - [ ] Tarea actual (objetivo, requisitos)
-- [ ] Implementar algoritmo de relevancia para seleccionar contexto
-- [ ] Generar prompt estructurado para agentes
-- [ ] Soporte para límites de tokens (truncamiento inteligente)
+#### Context Builder (`builder.py`)
+- [x] Implementar clase `ContextBuilder`
+- [x] Combinar múltiples fuentes de contexto:
+  - [x] Contexto del proyecto (archivos cargados)
+  - [x] Memoria relevante (vector store / RAG)
+  - [x] Sesión actual (historial de conversación)
+  - [x] Tarea actual (objetivo, requisitos)
+- [x] Presupuesto de tokens distribuido (10% sistema, 30% proyecto, 30% memoria, 20% sesión, 10% tarea)
+- [x] Generar prompt estructurado para agentes
+- [x] Soporte para límites de tokens (truncamiento inteligente por sección)
+- [x] Flujo de 6 pasos alineado con canonico.md
+
+#### Context Retriever (`retriever.py`)
+- [x] Implementar clase `ContextRetriever`
+- [x] Búsqueda semántica por tipo de memoria (SEMANTIC, EPISODIC, PROCEDURAL)
+- [x] `RetrievalConfig` con parámetros configurables (top_k, min_relevance, max_tokens)
+- [x] Filtrado por relevancia mínima
+- [x] Boost de recencia para entradas recientes
+- [x] Deduplicación de contenido
+- [x] Truncamiento inteligente a límite de tokens
+- [x] Recuperación específica por rol de agente (`retrieve_for_agent()`)
+- [x] Recuperación de contexto de proyecto
+
+#### Session Manager (`session.py`)
+- [x] Implementar clase `SessionManager`
+- [x] `SessionState` con estados: ACTIVE, IDLE, SUMMARIZED, EXPIRED, CLOSED
+- [x] Gestión de historial de mensajes con límite configurable
+- [x] Sumarización automática cuando se alcanza umbral de mensajes
+- [x] Formato de contexto reciente para prompts de agentes
+- [x] Limpieza de sesiones expiradas por TTL
+- [x] Evicción LRU cuando se excede la capacidad
+
+#### Tipos de Contexto (`types.py`)
+- [x] `ContextType` — Enum con 11 tipos de contexto
+- [x] `ContextEntry` — Entrada individual con relevancia y tokens
+- [x] `RetrievedContext` — Resultado de búsqueda con estadísticas
+- [x] `SessionConfig` — Configuración de sesión
+- [x] `ProjectConfig` — Configuración de proyecto específica para contexto
 
 #### Mejoras al ContextManager (`manager.py`)
-- [ ] Implementar `_load_existing_projects()` (actualmente tiene `pass`)
-- [ ] Implementar `_load_project_from_memory()` (mencionado pero no implementado)
-- [ ] Añadir validación de proyectos existentes
-- [ ] Implementar limpieza automática de caché expirado
-- [ ] Añadir métodos para gestión de sesiones (crear, listar, eliminar)
+- [x] Implementar `_load_existing_projects()` — Carga desde registro en memoria
+- [x] Implementar `_load_project_from_memory()` — Reconstruye ProjectContext desde JSON
+- [x] Implementar `update_project_context()` — Actualización campo por campo con persistencia
+- [x] Gestión de caché con TTL y estadísticas
 
 #### Integración con Memoria
-- [ ] Conectar `ContextManager` con `MemoryStore` para recuperación de contexto
-- [ ] Implementar RAG (Retrieval Augmented Generation) para búsqueda semántica
-- [ ] Añadir embeddings de documentos de proyecto en memoria vectorial
+- [x] Conectar `ContextRetriever` con `MemoryStore` para recuperación de contexto
+- [x] Implementar RAG (Retrieval Augmented Generation) para búsqueda semántica
+- [x] Recuperación específica por rol de agente con priorización de tipos de memoria
 
 ---
 
@@ -269,10 +297,10 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ## 🚀 Próximos Pasos (Roadmap)
 
-### Fase 1 - Funcionalidad Básica (Alta Prioridad) ✅ Módulo 4 completado
+### Fase 1 - Funcionalidad Básica (Alta Prioridad) ✅ Módulos 4 y 6 completados
 1. ~~Completar agentes (Módulo 4)~~ ✅ Completado
-2. Completar contexto (Módulo 6) - **Siguiente paso**
-3. Implementar endpoints API esenciales (Módulo 8)
+2. ~~Completar contexto (Módulo 6)~~ ✅ Completado
+3. Implementar endpoints API esenciales (Módulo 8) - **Siguiente paso**
 4. Implementar comandos CLI esenciales (Módulo 9)
 
 ### Fase 2 - Funcionalidad Avanzada (Media Prioridad)
@@ -312,4 +340,4 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-**Nota:** Este documento se actualizó el 2025-04-09. El **Módulo 4 (Agentes)** fue completado en esta sesión. El siguiente paso es el **Módulo 6 (Contexto)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.
+**Nota:** Este documento se actualizó el 2025-04-09. Los **Módulos 4 (Agentes) y 6 (Contexto)** fueron completados. El siguiente paso son los **Módulos 8 (API) y 9 (CLI)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.

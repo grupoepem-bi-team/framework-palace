@@ -174,11 +174,54 @@ class ContextManager:
         """
         Carga proyectos existentes desde la memoria.
 
-        Busca todos los proyectos con contexto almacenado
-        y los carga en el gestor.
+        Busca el registro de proyectos almacenado en memoria y
+        reconstruye los gestores de contexto para cada proyecto encontrado.
+        Los proyectos se cargan de forma diferida (lazy) cuando se acceden
+        por primera vez, pero este método pre-carga los proyectos conocidos.
         """
-        # TODO: Implementar carga desde memoria
-        pass
+        try:
+            # Buscar el registro global de proyectos usando un project_id especial
+            registry_entries = await self._memory_store.search(
+                project_id="__system__",
+                query="project registry",
+                memory_type=MemoryType.PROJECT,
+                top_k=50,
+            )
+
+            if not registry_entries:
+                logger.info("no_existing_projects_found")
+                return
+
+            # Extraer los project_ids del registro
+            loaded_count = 0
+            for entry in registry_entries:
+                metadata = entry.get("metadata", {})
+                if metadata.get("type") != "project_registry":
+                    continue
+
+                registered_ids = metadata.get("project_ids", [])
+                for project_id in registered_ids:
+                    try:
+                        loaded = await self._load_project_from_memory(project_id)
+                        if loaded:
+                            loaded_count += 1
+                    except Exception as e:
+                        logger.warning(
+                            "failed_to_preload_project",
+                            project_id=project_id,
+                            error=str(e),
+                        )
+
+            logger.info(
+                "existing_projects_loaded",
+                loaded_count=loaded_count,
+            )
+
+        except Exception as e:
+            logger.warning(
+                "failed_to_load_existing_projects",
+                error=str(e),
+            )
 
     # -------------------------------------------------------------------------
     # Gestión de Proyectos
@@ -308,6 +351,10 @@ class ContextManager:
         """
         Carga un proyecto desde la memoria.
 
+        Busca la configuración del proyecto en el almacén de memoria,
+        la reconstruye como un ProjectContext y registra el gestor
+        correspondiente para que esté disponible para consultas futuras.
+
         Args:
             project_id: ID del proyecto a cargar
 
@@ -315,19 +362,99 @@ class ContextManager:
             True si se cargó exitosamente
         """
         try:
-            # Buscar en memoria
+            # Evitar recarga si ya existe
+            if project_id in self._project_managers:
+                return True
+
+            # Buscar configuración del proyecto en memoria
             entries = await self._memory_store.search(
                 project_id=project_id,
                 query="project configuration",
                 memory_type=MemoryType.PROJECT,
-                top_k=1,
+                top_k=5,
             )
 
             if not entries:
+                logger.debug(
+                    "project_not_found_in_memory",
+                    project_id=project_id,
+                )
                 return False
 
-            # Reconstruir contexto
-            # TODO: Implementar reconstrucción
+            # Buscar la entrada de configuración principal
+            config_entry = None
+            for entry in entries:
+                metadata = entry.get("metadata", {})
+                if metadata.get("type") == "project_config":
+                    config_entry = entry
+                    break
+
+            # Si no hay entrada etiquetada, usar la primera
+            if config_entry is None:
+                config_entry = entries[0]
+
+            # Reconstruir ProjectContext desde el contenido almacenado
+            import json
+
+            content = config_entry.get("content", "{}")
+            try:
+                config_data = json.loads(content) if isinstance(content, str) else content
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(
+                    "invalid_project_config_json",
+                    project_id=project_id,
+                )
+                config_data = {}
+
+            # Reconstruir ProjectConfig y ProjectContext
+            if "config" in config_data:
+                config_dict = config_data["config"]
+                project_config = ProjectConfig(**config_dict)
+            elif "name" in config_data or "project_id" in config_data:
+                project_config = ProjectConfig(**config_data)
+            else:
+                # Crear configuración mínima con los datos disponibles
+                project_config = ProjectConfig(
+                    name=config_data.get("name", project_id),
+                    description=config_data.get("description"),
+                    backend_framework=config_data.get("backend_framework"),
+                    frontend_framework=config_data.get("frontend_framework"),
+                    database=config_data.get("database"),
+                    deployment=config_data.get("deployment"),
+                )
+
+            project_context = ProjectContext(config=project_config)
+
+            # Reconstruir ADRs si existen en los datos
+            if "adrs" in config_data:
+                project_context.adrs = config_data["adrs"]
+            if "patterns" in config_data:
+                project_context.patterns = config_data["patterns"]
+            if "instructions" in config_data:
+                project_context.instructions = config_data["instructions"]
+
+            # Crear gestor específico del proyecto
+            manager = ProjectContextManager(
+                project_id=project_id,
+                project_context=project_context,
+                memory_store=self._memory_store,
+            )
+            await manager.initialize()
+
+            # Registrar en caché y gestores
+            self._project_managers[project_id] = manager
+            self._project_cache[project_id] = CachedContext(
+                project_context=project_context,
+                last_updated=datetime.utcnow(),
+                ttl_seconds=self._cache_ttl,
+            )
+
+            logger.info(
+                "project_loaded_from_memory",
+                project_id=project_id,
+                project_name=project_config.name,
+            )
+
             return True
 
         except Exception as e:
@@ -359,8 +486,45 @@ class ContextManager:
         # Obtener contexto actual
         context = await self.get_project_context(project_id)
 
-        # Aplicar actualizaciones
-        # TODO: Implementar actualización de campos
+        # Aplicar actualizaciones campo por campo
+        config = context.config
+        updatable_config_fields = {
+            "name",
+            "description",
+            "backend_framework",
+            "frontend_framework",
+            "database",
+            "deployment",
+            "root_path",
+            "source_path",
+            "tests_path",
+            "code_style",
+            "test_framework",
+        }
+        for field_name, value in updates.items():
+            if field_name in updatable_config_fields and hasattr(config, field_name):
+                setattr(config, field_name, value)
+            elif field_name == "adrs":
+                context.adrs = value if isinstance(value, list) else [value]
+            elif field_name == "patterns":
+                context.patterns = value if isinstance(value, list) else [value]
+            elif field_name == "instructions":
+                context.instructions = value if isinstance(value, list) else [value]
+            elif field_name == "cached_files" and isinstance(value, dict):
+                context.cached_files.update(value)
+            elif field_name == "active_session_id":
+                context.active_session_id = value
+            else:
+                # Almacenar como metadato genérico en instructions
+                logger.debug(
+                    "unknown_update_field_stored_as_instruction",
+                    field=field_name,
+                    project_id=project_id,
+                )
+                context.instructions.append(f"{field_name}: {value}")
+
+        # Actualizar timestamp
+        context.touch()
 
         # Invalidar caché
         if project_id in self._project_cache:

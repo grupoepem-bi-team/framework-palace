@@ -13,7 +13,7 @@ Este documento describe el estado de implementación de los módulos del framewo
 | 3. LLM Router | ✅ Completado | Implementación completa en `llm/router.py` |
 | 4. Agentes | ✅ Completado | Todos los agentes implementados con métodos `run`, `can_handle`, `_build_system_prompt` |
 | 5. Memoria | ✅ Completado | Sistema vectorial con múltiples backends implementado |
-| 6. Contexto | ⚠️ Parcial | Gestor de contexto implementado, faltan Project Loader y Context Builder |
+| 6. Contexto | ✅ Completado | Project Loader, Context Builder, Retriever, Session Manager implementados |
 | 7. Pipeline | ❌ Pendiente | Directorio creado pero sin implementación |
 | 8. API | ⚠️ Parcial | FastAPI básico implementado, faltan endpoints |
 | 9. CLI | ⚠️ Parcial | Comandos básicos implementados |
@@ -111,17 +111,74 @@ src/palace/
 - Diseño limpio y extensible
 - Preparado para integración futura con Zep (ya implementado)
 
-### ⚠️ Módulo 6: Contexto
-**Estado:** Parcialmente implementado
+### ✅ Módulo 6: Contexto
+**Estado:** Completado
 **Ubicación:** `src/palace/context/`
 **Componentes implementados:**
-- ✅ `manager.py` - `ContextManager` con gestión básica de proyectos
-- ✅ Caché de contexto con TTL
-- ✅ Gestión de sesiones
-- ⚠️ **Faltan:**
-  - Project Loader para cargar archivos desde `/ai_context/`
-  - Context Builder que combine contexto del proyecto, memoria y tarea
-  - Carga de archivos: `architecture.md`, `stack.md`, `conventions.md`
+
+- ✅ `types.py` — Tipos específicos del módulo de contexto
+  - `ContextType` — Enum con 11 tipos: ARCHITECTURE, STACK, CONVENTIONS, DECISIONS, CONSTRAINTS, PATTERN, ANTI_PATTERN, CONFIG, SESSION, MEMORY, TASK
+  - `ContextEntry` — Entrada individual de contexto con relevancia, tokens, metadata
+  - `RetrievedContext` — Resultado de búsqueda de contexto con estadísticas
+  - `SessionConfig` — Configuración de sesión (max_messages, auto_summarize, TTL)
+  - `ProjectConfig` — Configuración de proyecto específica para contexto (paths, stack, decisiones)
+
+- ✅ `loader.py` — `ProjectLoader` — Cargador de archivos de contexto
+  - Carga asíncrona de archivos desde directorio `/ai_context/`
+  - Soporte para 5 archivos: `architecture.md`, `stack.md`, `conventions.md`, `decisions.md`, `constraints.md`
+  - Parseo inteligente de markdown a estructuras de datos (`ContextEntry`)
+  - Extracción de secciones (`##` headings) y títulos
+  - Parseo específico de `stack.md` con mapping de tecnologías
+  - Sistema de caché con invalidación selectiva y global
+  - Estimación de tokens para control de presupuesto
+  - Manejo graceful de archivos faltantes (log warning, no raise)
+
+- ✅ `retriever.py` — `ContextRetriever` — Recuperador de contexto RAG
+  - `RetrievalConfig` — Configuración de recuperación (top_k, min_relevance, max_tokens, memory_types)
+  - Búsqueda semántica por tipo de memoria (SEMANTIC, EPISODIC, PROCEDURAL)
+  - Filtrado por relevancia mínima configurable
+  - Boost de recencia para entradas recientes (24h: factor completo, 7d: medio)
+  - Deduplicación de contenido por similitud (primeros 200 chars)
+  - Truncamiento inteligente a límite de tokens
+  - Recuperación específica por rol de agente (cada rol prioriza tipos de memoria distintos)
+  - Recuperación de contexto a nivel de proyecto
+
+- ✅ `session.py` — `SessionManager` — Gestor de sesiones
+  - `SessionState` — Enum de estados: ACTIVE, IDLE, SUMMARIZED, EXPIRED, CLOSED
+  - `SessionData` — Estructura interna con mensajes, metadata, historial de agentes
+  - Creación y gestión de sesiones con IDs opcionales
+  - Historial de mensajes con límite configurable
+  - Sumarización automática cuando se alcanza umbral de mensajes
+  - Formato de contexto reciente para prompts de agentes
+  - Limpieza de sesiones expiradas por TTL
+  - Evicción LRU cuando se excede la capacidad
+  - Estadísticas detalladas de sesión
+
+- ✅ `builder.py` — `ContextBuilder` — Constructor central de contexto
+  - Presupuesto de tokens distribuido: 10% sistema, 30% proyecto, 30% memoria, 20% sesión, 10% tarea
+  - Flujo de 6 pasos alineado con canonico.md:
+    1. Calcular presupuestos de tokens
+    2. Construir sección de sistema (rol del agente)
+    3. Construir sección de proyecto (archivos /ai_context/)
+    4. Construir sección de memoria (RAG retrieval)
+    5. Construir sección de sesión (historial de conversación)
+    6. Construir sección de tarea (descripción actual)
+  - Truncamiento independiente por sección respetando presupuesto
+  - Ensamblaje ordenado con separadores y formato markdown
+  - Carga de proyectos con caché integrado
+  - Nunca falla — siempre retorna un prompt utilizable
+
+- ✅ `manager.py` — `ContextManager` actualizado
+  - `_load_existing_projects()` — Implementado: carga proyectos desde registro en memoria
+  - `_load_project_from_memory()` — Implementado: reconstruye ProjectContext desde JSON almacenado
+  - `update_project_context()` — Implementado: actualización campo por campo con persistencia
+  - Gestión de caché con TTL y estadísticas
+  - Gestión de proyectos: crear, obtener, actualizar, eliminar, listar
+  - Gestión de sesiones integrada
+  - Almacenamiento de ADRs y patrones
+
+- ✅ `__init__.py` — Módulo actualizado con todas las exportaciones
+  - Exporta: ContextManager, ProjectContextManager, ContextBuilder, ProjectLoader, SessionManager, SessionState, ContextRetriever, RetrievalConfig, ContextEntry, ContextType, ProjectConfig, SessionConfig, RetrievedContext
 
 ### ❌ Módulo 7: Pipeline
 **Estado:** Pendiente
@@ -172,16 +229,16 @@ src/palace/
 
 ## Estado General del Proyecto
 
-### ✅ Completados (6 módulos)
+### ✅ Completados (7 módulos)
 - Arquitectura (Módulo 1)
 - Estructura del proyecto (Módulo 2)
 - LLM Router (Módulo 3)
-- **Agentes (Módulo 4)** ← Recién completado
+- Agentes (Módulo 4)
 - Memoria vectorial (Módulo 5)
+- **Contexto (Módulo 6)** ← Recién completado
 - Integración Zep (Módulo 10)
 
-### ⚠️ Parcialmente Implementados (3 módulos)
-- Contexto (Módulo 6) - Gestor básico, faltan Project Loader y Context Builder
+### ⚠️ Parcialmente Implementados (2 módulos)
 - API (Módulo 8) - Estructura base, faltan endpoints
 - CLI (Módulo 9) - Estructura base, faltan comandos
 
@@ -191,9 +248,9 @@ src/palace/
 
 ## Próximos Pasos Recomendados
 
-1. **Completar contexto (Módulo 6)**: Implementar Project Loader y Context Builder
-2. **Implementar pipeline (Módulo 7)**: Crear flujos de trabajo completos
-3. **Completar API y CLI (Módulos 8-9)**: Implementar endpoints y comandos faltantes
+1. **Completar API (Módulo 8)**: Implementar endpoints REST para tareas, proyectos y memoria
+2. **Completar CLI (Módulo 9)**: Implementar comandos run, attach, status, memory
+3. **Implementar pipeline (Módulo 7)**: Crear flujos de trabajo completos
 4. **Implementar refinamiento (Módulo 11)**: Añadir características de robustez
 
 ## Notas Técnicas
@@ -204,6 +261,7 @@ src/palace/
 - Falta documentación detallada y tests
 - La integración entre componentes necesita ser probada
 - Todos los agentes siguen un patrón consistente (run → can_handle → _build_system_prompt)
+- El ContextBuilder gestiona el presupuesto de tokens y el ensamblaje del prompt final
 
 ---
 *Última actualización: 2025-04-09*
