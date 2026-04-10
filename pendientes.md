@@ -11,10 +11,9 @@ Este documento lista las tareas pendientes organizadas por módulo, basadas en e
 
 | Prioridad | Módulo | Descripción |
 |-----------|--------|-------------|
-| 🟡 Media | Módulo 7 (Pipeline) | Flujos de trabajo avanzados |
-| 🟢 Baja | Módulo 11 (Refinamiento) | Mejoras de robustez y optimización |
-| 🟢 Baja | Módulo 7 (Pipeline) | Flujos de trabajo avanzados |
-| 🟢 Baja | Módulo 11 (Refinamiento) | Mejoras de robustez y optimización |
+| 🟡 Media | Módulo 11 (Refinamiento) | Manejo de errores, logging, control de costos |
+| 🟢 Baja | Tests y Calidad | Tests unitarios e integración |
+| 🟢 Baja | Documentación | Guías de uso, ejemplos, API docs |
 
 ---
 
@@ -100,25 +99,53 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-## ⚙️ Módulo 7: Pipeline
+## ⚙️ Módulo 7: Pipeline — ✅ COMPLETADO
 
-**Estado:** ❌ No implementado
+**Estado:** ✅ Completado
 **Ubicación:** `src/palace/pipelines/`
 
-### Tareas Pendientes
+### Componentes Implementados
 
-- [ ] Diseñar arquitectura de pipelines (flujos de trabajo)
-- [ ] Implementar clase base `Pipeline` en `pipelines/base.py`
-- [ ] Crear pipelines específicos:
-  - [ ] `DevelopmentPipeline` - Para desarrollo de features
-  - [ ] `BugFixPipeline` - Para corrección de bugs
-  - [ ] `RefactoringPipeline` - Para refactorizaciones
-  - [ ] `ReviewPipeline` - Para revisiones de código
-- [ ] Implementar steps/interfaces para cada etapa del pipeline
-- [ ] Integrar pipelines con orquestador de agentes
-- [ ] Añadir sistema de condiciones y branching en pipelines
-- [ ] Implementar monitoreo y logging de ejecución de pipelines
-- [ ] Crear API para gestionar pipelines (iniciar, pausar, cancelar)
+#### Tipos y Configuración (`types.py`)
+- [x] `StepType` — Enum con 6 tipos: AGENT_TASK, CONDITIONAL, PARALLEL, VALIDATION, TRANSFORM, HUMAN_APPROVAL
+- [x] `PipelineType` — Enum con 8 tipos: FEATURE_DEVELOPMENT, CODE_REVIEW, DEPLOYMENT, DATABASE_MIGRATION, REFACTORING, DOCUMENTATION, BUG_FIX, CUSTOM
+- [x] `StepConfig` — Configuración de paso con dependencias, retry, timeout, templates
+- [x] `PipelineConfig` — Configuración de pipeline con steps, max_retries, timeout, auto_approve
+- [x] `StepDefinition`, `PipelineDefinition` — Definiciones estructuradas
+
+#### Clases Base (`base.py`)
+- [x] `PipelineStatus` — Enum: PENDING, RUNNING, PAUSED, COMPLETED, FAILED, CANCELLED
+- [x] `StepStatus` — Enum: PENDING, RUNNING, COMPLETED, FAILED, SKIPPED, WAITING_APPROVAL
+- [x] `StepResult` — Resultado de paso con artefactos, tokens, tiempo de ejecución
+- [x] `PipelineResult` — Resultado de pipeline con step_results, artefactos, errores
+- [x] `PipelineContext` — Contexto compartido entre pasos (variables, step_outputs)
+- [x] `PipelineStep` — ABC con `execute()` y `can_execute()`, template variable substitution
+- [x] `Pipeline` — ABC con `build_steps()` y `get_initial_context()`, validación
+
+#### Ejecutor (`executor.py`)
+- [x] `PipelineExecutor` — Ejecución con resolución de dependencias (topological sort)
+- [x] Ejecución paralela de pasos sin dependencias (asyncio.gather)
+- [x] Manejo de errores con retry y stop_on_failure
+- [x] Soporte para PARALLEL, CONDITIONAL, AGENT_TASK steps
+- [x] Integración con PalaceFramework para ejecución real de agentes
+- [x] `get_executor()` — Singleton factory
+
+#### Pipelines Específicos
+- [x] `FeatureDevelopmentPipeline` — 6 pasos: analyze → database → backend → frontend → testing → review
+- [x] `CodeReviewPipeline` — 4 pasos: analyze_code → security_review → suggest_improvements → final_report
+- [x] `DeploymentPipeline` — 5 pasos: pre_deploy_check → build_and_test → deploy → post_deploy_verify → monitor
+- [x] `DatabaseMigrationPipeline` — 5 pasos: analyze_schema → design_migration → review_migration → execute_migration → verify_migration
+- [x] `RefactoringPipeline` — 5 pasos: analyze_code → plan_refactoring → implement_refactoring → test_refactoring → final_review
+- [x] `DocumentationPipeline` — 4 pasos: analyze_codebase → generate_api_docs → generate_user_docs → review_docs
+- [x] `AgentStep` — Clase concreta que delega ejecución a agentes con template variable injection
+
+### Mejoras Pendientes (Baja Prioridad)
+- [ ] Añadir sistema de condiciones y branching avanzado en pipelines
+- [ ] Implementar monitoreo y logging detallado de ejecución
+- [ ] Crear API para gestionar pipelines (iniciar, pausar, cancelar) via REST
+- [ ] Implementar `BugFixPipeline` como pipeline específico
+- [ ] Añadir persistencia de resultados de pipeline en memoria
+- [ ] Tests de pipelines
 
 ---
 
@@ -315,9 +342,9 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 3. ~~Implementar endpoints API esenciales (Módulo 8)~~ ✅ Completado
 4. ~~Implementar comandos CLI esenciales (Módulo 9)~~ ✅ Completado
 
-### Fase 2 - Funcionalidad Avanzada (Media Prioridad)
-1. Implementar pipelines (Módulo 7)
-2. Completar refinamientos (Módulo 11)
+### Fase 2 - Funcionalidad Avanzada (Media Prioridad) ✅ Completada
+1. ~~Implementar pipelines (Módulo 7)~~ ✅ Completado
+2. Completar refinamientos (Módulo 11) — **Siguiente paso**
 3. Mejorar orquestación y optimizaciones
 
 ### Fase 3 - Producción (Baja Prioridad)
@@ -352,4 +379,4 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-**Nota:** Este documento se actualizó el 2025-04-09. Los **Módulos 4, 6, 8 y 9** fueron completados. Los siguientes pasos son el **Módulo 7 (Pipeline)** y el **Módulo 11 (Refinamiento)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.
+**Nota:** Este documento se actualizó el 2025-04-09. Los **Módulos 4, 6, 7, 8 y 9** fueron completados. El siguiente paso es el **Módulo 11 (Refinamiento)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.

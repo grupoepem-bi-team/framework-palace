@@ -14,7 +14,7 @@ Este documento describe el estado de implementación de los módulos del framewo
 | 4. Agentes | ✅ Completado | Todos los agentes implementados con métodos `run`, `can_handle`, `_build_system_prompt` |
 | 5. Memoria | ✅ Completado | Sistema vectorial con múltiples backends implementado |
 | 6. Contexto | ✅ Completado | Project Loader, Context Builder, Retriever, Session Manager implementados |
-| 7. Pipeline | ❌ Pendiente | Directorio creado pero sin implementación |
+| 7. Pipeline | ✅ Completado | Pipelines de trabajo con executor, steps y 6 pipelines específicos |
 | 8. API | ✅ Completado | Endpoints REST implementados con integración real al framework |
 | 9. CLI | ✅ Completado | Comandos CLI implementados con integración real al framework |
 | 10. Zep | ✅ Completado | Integración con Zep implementada en vector store |
@@ -180,10 +180,54 @@ src/palace/
 - ✅ `__init__.py` — Módulo actualizado con todas las exportaciones
   - Exporta: ContextManager, ProjectContextManager, ContextBuilder, ProjectLoader, SessionManager, SessionState, ContextRetriever, RetrievalConfig, ContextEntry, ContextType, ProjectConfig, SessionConfig, RetrievedContext
 
-### ❌ Módulo 7: Pipeline
-**Estado:** Pendiente
+### ✅ Módulo 7: Pipeline
+**Estado:** Completado
 **Ubicación:** `src/palace/pipelines/`
-**Observaciones:** Directorio creado pero solo contiene `__init__.py`
+**Componentes implementados:**
+
+- ✅ `types.py` — Tipos de pipeline
+  - `StepType` — Enum con 6 tipos: AGENT_TASK, CONDITIONAL, PARALLEL, VALIDATION, TRANSFORM, HUMAN_APPROVAL
+  - `PipelineType` — Enum con 8 tipos: FEATURE_DEVELOPMENT, CODE_REVIEW, DEPLOYMENT, DATABASE_MIGRATION, REFACTORING, DOCUMENTATION, BUG_FIX, CUSTOM
+  - `StepConfig` — Configuración de paso con dependencias, retry, timeout, templates
+  - `PipelineConfig` — Configuración de pipeline con steps, max_retries, timeout, auto_approve
+  - `StepDefinition`, `PipelineDefinition` — Definiciones estructuradas
+
+- ✅ `base.py` — Clases base abstractas
+  - `PipelineStatus` — Enum: PENDING, RUNNING, PAUSED, COMPLETED, FAILED, CANCELLED
+  - `StepStatus` — Enum: PENDING, RUNNING, COMPLETED, FAILED, SKIPPED, WAITING_APPROVAL
+  - `StepResult` — Resultado de paso con artefactos, tokens, tiempo de ejecución
+  - `PipelineResult` — Resultado de pipeline con step_results, artefactos, errores
+  - `PipelineContext` — Contexto compartido entre pasos (variables, step_outputs)
+  - `PipelineStep` — ABC con `execute()` y `can_execute()`, template variable substitution
+  - `Pipeline` — ABC con `build_steps()` y `get_initial_context()`, validación
+
+- ✅ `executor.py` — Ejecutor de pipelines
+  - `PipelineExecutor` — Ejecución con resolución de dependencias (topological sort)
+  - Ejecución paralela de pasos sin dependencias (asyncio.gather)
+  - Manejo de errores con retry y stop_on_failure
+  - Soporte para PARALLEL, CONDITIONAL, AGENT_TASK steps
+  - Integración con PalaceFramework para ejecución real de agentes
+  - `get_executor()` — Singleton factory
+
+- ✅ `feature_development.py` — `FeatureDevelopmentPipeline`
+  - 6 pasos: analyze → database → backend → frontend → testing → review
+  - `AgentStep` — Clase concreta que delega a agentes
+  - Templates con inyección de outputs de pasos previos
+
+- ✅ `code_review.py` — `CodeReviewPipeline`
+  - 4 pasos: analyze_code → security_review → suggest_improvements → final_report
+
+- ✅ `deployment.py` — `DeploymentPipeline`
+  - 5 pasos: pre_deploy_check → build_and_test → deploy → post_deploy_verify → monitor
+
+- ✅ `database_migration.py` — `DatabaseMigrationPipeline`
+  - 5 pasos: analyze_schema → design_migration → review_migration → execute_migration → verify_migration
+
+- ✅ `refactoring.py` — `RefactoringPipeline`
+  - 5 pasos: analyze_code → plan_refactoring → implement_refactoring → test_refactoring → final_review
+
+- ✅ `documentation.py` — `DocumentationPipeline`
+  - 4 pasos: analyze_codebase → generate_api_docs → generate_user_docs → review_docs
 
 ### ✅ Módulo 8: API
 **Estado:** Completado
@@ -266,27 +310,27 @@ src/palace/
 
 ## Estado General del Proyecto
 
-### ✅ Completados (7 módulos)
+### ✅ Completados (8 módulos)
 - Arquitectura (Módulo 1)
 - Estructura del proyecto (Módulo 2)
 - LLM Router (Módulo 3)
 - Agentes (Módulo 4)
 - Memoria vectorial (Módulo 5)
-- **Contexto (Módulo 6)** ← Recién completado
+- Contexto (Módulo 6)
+- **Pipeline (Módulo 7)** ← Recién completado
 - Integración Zep (Módulo 10)
 
 ### ⚠️ Parcialmente Implementados (0 módulos)
 (Ningún módulo queda parcialmente implementado)
 
-### ❌ Pendientes (2 módulos)
-- Pipeline (Módulo 7)
+### ❌ Pendientes (1 módulo)
 - Refinamiento (Módulo 11)
 
 ## Próximos Pasos Recomendados
 
-1. **Implementar pipeline (Módulo 7)**: Crear flujos de trabajo completos (Development, BugFix, Refactoring, Review)
-2. **Implementar refinamiento (Módulo 11)**: Añadir manejo de errores, logging estructurado, control de costos
-4. **Implementar refinamiento (Módulo 11)**: Añadir características de robustez
+1. **Implementar refinamiento (Módulo 11)**: Añadir manejo de errores, logging estructurado, control de costos, mejora de orquestación
+2. **Tests y calidad**: Crear tests unitarios e integración para todos los módulos
+3. **Documentación**: Guías de uso, ejemplos y API docs
 
 ## Notas Técnicas
 
@@ -299,7 +343,8 @@ src/palace/
 - El ContextBuilder gestiona el presupuesto de tokens y el ensamblaje del prompt final
 - API y CLI integrados directamente con ContextManager y MemoryStore (sin acceder a atributos privados del Orchestrator)
 - CLI incluye comando `attach` para conectar a proyectos existentes y cargar contexto
+- Pipelines con resolución automática de dependencias y ejecución paralela
 
 ---
-*Última actualización: 2025-04-09 — Módulos 8 y 9 completados*
+*Última actualización: 2025-04-09 — Módulo 7 (Pipeline) completado*
 *Basado en análisis del código en `framework-palace/src/*`*
