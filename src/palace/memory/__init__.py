@@ -73,6 +73,13 @@ from palace.memory.base import (
     create_search_query,
 )
 
+# Memory store backends
+from palace.memory.stores import (
+    ChromaMemoryStore,
+    SQLiteMemoryStore,
+    ZepMemoryStore,
+)
+
 # Vector store implementations
 from palace.memory.vector_store import (
     ChromaVectorStore,
@@ -114,4 +121,8 @@ __all__ = [
     "EmbeddingConfig",
     "EmbedderBase",
     "OllamaEmbedder",
+    # Memory store backends
+    "SQLiteMemoryStore",
+    "ChromaMemoryStore",
+    "ZepMemoryStore",
 ]
