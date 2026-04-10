@@ -686,9 +686,12 @@ class MemoryStore:
             await self._store.close()
         self._initialized = False
 
-    @property
-    def store(self) -> MemoryBase:
-        """Get the underlying memory store."""
+    def _require_store(self) -> MemoryBase:
+        """Get the underlying memory store, raising if not initialized.
+
+        This replaces the former ``store`` property to avoid a naming
+        conflict with the ``async def store()`` delegation method.
+        """
         if not self._initialized or self._store is None:
             raise RuntimeError("Memory store not initialized. Call initialize() first.")
         return self._store
@@ -711,39 +714,39 @@ class MemoryStore:
 
     async def store(self, entry: MemoryEntry) -> str:
         """Store a memory entry."""
-        return await self.store.store(entry)
+        return await self._require_store().store(entry)
 
     async def store_batch(self, entries: List[MemoryEntry]) -> List[str]:
         """Store multiple entries."""
-        return await self.store.store_batch(entries)
+        return await self._require_store().store_batch(entries)
 
     async def retrieve(self, entry_id: str) -> Optional[MemoryEntry]:
         """Retrieve an entry by ID."""
-        return await self.store.retrieve(entry_id)
+        return await self._require_store().retrieve(entry_id)
 
     async def search(self, query: SearchQuery) -> List[SearchResult]:
         """Search for entries."""
-        return await self.store.search(query)
+        return await self._require_store().search(query)
 
     async def delete(self, entry_id: str) -> bool:
         """Delete an entry."""
-        return await self.store.delete(entry_id)
+        return await self._require_store().delete(entry_id)
 
     async def delete_batch(self, entry_ids: List[str]) -> int:
         """Delete multiple entries."""
-        return await self.store.delete_batch(entry_ids)
+        return await self._require_store().delete_batch(entry_ids)
 
     async def delete_by_project(self, project_id: str) -> int:
         """Delete all entries for a project."""
-        return await self.store.delete_by_project(project_id)
+        return await self._require_store().delete_by_project(project_id)
 
     async def count(self, project_id: Optional[str] = None) -> int:
         """Count entries."""
-        return await self.store.count(project_id)
+        return await self._require_store().count(project_id)
 
     async def clear(self, memory_type: Optional[MemoryType] = None) -> int:
         """Clear entries."""
-        return await self.store.clear(memory_type)
+        return await self._require_store().clear(memory_type)
 
     # Convenience methods
 

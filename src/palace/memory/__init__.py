@@ -9,22 +9,24 @@ This module provides the memory layer for the Palace framework, enabling:
 
 Components:
     - MemoryStore: Main interface for memory operations
-    - VectorStore: Vector database integration (Zep/Chroma/SQLite)
-    - MemoryManager: High-level memory management
-    - EmbeddingGenerator: Text embedding generation
+    - VectorStoreBase: Abstract base for vector store backends
+    - InMemoryVectorStore: In-memory vector store for testing
+    - ChromaVectorStore: ChromaDB-backed vector store
+    - ZepVectorStore: Zep-backed vector store for production
+    - EmbeddingProvider: Text embedding generation
 
 Architecture:
     ┌─────────────────────────────────────────────────────────┐
-    │                     MemoryManager                        │
+    │                     MemoryStore                         │
     │  ┌─────────────────────────────────────────────────┐    │
-    │  │              MemoryStore (Interface)             │    │
+    │  │              MemoryBase (Interface)             │    │
     │  └─────────────────────────────────────────────────┘    │
     │                      │                                   │
     │  ┌────────────┬──────┴──────┬────────────────────┐     │
     │  │            │             │                     │     │
     │  ▼            ▼             ▼                     ▼     │
-    │ Zep      ChromaDB    SQLite Store         Redis Store   │
-    │ Store    (Vector)    (Local Dev)          (Cache)        │
+    │ ZepVector   ChromaDB     InMemory              SQLite  │
+    │ Store      (Vector)     (Testing)              (Local) │
     └─────────────────────────────────────────────────────────┘
 
 Memory Types:
@@ -55,43 +57,61 @@ Usage:
     )
 """
 
-# Memory type enumeration
-from palace.core.types import MemoryType
+# Memory types and data structures from base
 from palace.memory.base import (
-    EmbeddingGenerator,
+    EmbeddingProvider,
     MemoryBase,
     MemoryEntry,
-    MemoryQuery,
-    MemoryResult,
+    MemoryPriority,
     MemoryStore,
-)
-from palace.memory.manager import MemoryManager, get_memory_manager
-from palace.memory.vector_store import (
-    ChromaStore,
-    InMemoryVectorStore,
-    SQLiteVectorStore,
+    MemoryType,
+    SearchQuery,
+    SearchResult,
+    SearchStrategy,
     VectorStore,
+    create_memory_entry,
+    create_search_query,
 )
-from palace.memory.zep_store import ZepMemoryStore
+
+# Vector store implementations
+from palace.memory.vector_store import (
+    ChromaVectorStore,
+    EmbedderBase,
+    EmbeddingConfig,
+    InMemoryVectorStore,
+    OllamaEmbedder,
+    VectorStoreBase,
+    VectorStoreConfig,
+    VectorStoreType,
+    ZepVectorStore,
+)
 
 __all__ = [
     # Base classes
     "MemoryBase",
     "MemoryStore",
-    "MemoryManager",
-    # Vector stores
-    "VectorStore",
-    "InMemoryVectorStore",
-    "SQLiteVectorStore",
-    "ChromaStore",
-    "ZepMemoryStore",
-    # Embeddings
-    "EmbeddingGenerator",
+    # Memory types
+    "MemoryType",
+    "MemoryPriority",
+    "SearchStrategy",
     # Data structures
     "MemoryEntry",
-    "MemoryQuery",
-    "MemoryResult",
-    "MemoryType",
+    "SearchQuery",
+    "SearchResult",
     # Factory functions
-    "get_memory_manager",
+    "create_memory_entry",
+    "create_search_query",
+    # Vector stores
+    "VectorStore",
+    "VectorStoreBase",
+    "VectorStoreConfig",
+    "VectorStoreType",
+    "InMemoryVectorStore",
+    "ChromaVectorStore",
+    "ZepVectorStore",
+    # Embeddings
+    "EmbeddingProvider",
+    "EmbeddingConfig",
+    "EmbedderBase",
+    "OllamaEmbedder",
 ]

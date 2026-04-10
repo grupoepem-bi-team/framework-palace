@@ -7,8 +7,8 @@ interface for the multi-agent software development framework.
 
 from typing import Optional
 
-from palace.config import Settings, get_settings
 from palace.context import ContextManager
+from palace.core.config import Settings, get_settings
 from palace.core.orchestrator import Orchestrator
 from palace.memory import MemoryStore
 

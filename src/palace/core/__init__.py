@@ -12,12 +12,15 @@ Components:
     - config: Configuration management and settings
     - exceptions: Custom exception hierarchy
     - types: Core type definitions and enums
+    - costs: Cost tracking and budget management
+    - resilience: Retry, circuit breaker, and fallback patterns
+    - memory_quality: Memory quality assessment and cleanup
+    - logging_config: Structured logging configuration
 """
 
 # Base abstractions
 from palace.core.base import (
     AgentBase,
-    MemoryBase,
     ResultBase,
     TaskBase,
     ToolBase,
@@ -25,48 +28,119 @@ from palace.core.base import (
 
 # Configuration
 from palace.core.config import (
-    AgentConfig,
-    Config,
+    APIConfig,
+    CLIConfig,
+    DatabaseConfig,
+    LoggingConfig,
     MemoryConfig,
     ModelConfig,
+    OllamaConfig,
+    ProjectsConfig,
+    SecurityConfig,
+    Settings,
     get_settings,
-    load_config,
 )
+
+# Cost tracking
+from palace.core.costs import CostBudget, CostTier, CostTracker, ModelPricing, UsageRecord
 
 # Exceptions
 from palace.core.exceptions import (
     AgentExecutionError,
     AgentNotFoundError,
+    APIError,
+    AuthenticationError,
+    AuthorizationError,
     ConfigurationError,
+    ContextError,
+    ContextRetrievalError,
+    EmbeddingError,
+    InvalidConfigError,
     MemoryError,
+    MemoryRetrievalError,
     MemoryStoreError,
+    MissingConfigError,
+    ModelError,
+    ModelNotAvailableError,
+    ModelResponseError,
     OrchestratorError,
     PalaceError,
     PipelineError,
+    PipelineExecutionError,
+    PipelineNotFoundError,
+    ProjectNotFoundError,
+    RateLimitError,
+    SessionNotFoundError,
     TaskExecutionError,
-    ValidationError,
+    TaskRoutingError,
+    ToolError,
+    ToolExecutionError,
+    ToolNotFoundError,
+    ToolTimeoutError,
+    WorkflowError,
 )
 
 # Framework entry point
-from palace.core.framework import PalaceFramework
+from palace.core.framework import ExecutionResult, PalaceFramework, ProjectStatus
+from palace.core.logging_config import (
+    LoggingConfig as LoggingConfigModule,
+)
 
-# Orchestrator
-from palace.core.orchestrator import Orchestrator
+# Logging configuration
+from palace.core.logging_config import (
+    LogLevel,
+    bind_context,
+    clear_context,
+    configure_logging,
+    get_context,
+    get_correlation_id,
+    get_logger,
+    log_performance,
+    new_correlation_id,
+    set_correlation_id,
+    unbind_context,
+)
+
+# Memory quality
+from palace.core.memory_quality import (
+    CleanupPolicy,
+    MemoryCleanupTask,
+    MemoryQualityChecker,
+    QualityScore,
+)
+
+# Resilience patterns
+from palace.core.resilience import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitOpenError,
+    CircuitState,
+    ModelFallback,
+    RetryConfig,
+    RetryWithBackoff,
+    retry,
+)
 
 # Types and enums
 from palace.core.types import (
     AgentCapability,
-    AgentInfo,
-    AgentState,
-    AgentStatus,
+    AgentConfig,
+    AgentResult,
+    AgentRole,
     MemoryEntry,
     MemoryType,
+    Message,
+    MessageType,
+    ProjectConfig,
     ProjectContext,
     SessionContext,
+    TaskDefinition,
     TaskPriority,
     TaskResult,
     TaskStatus,
-    ToolInfo,
+)
+from palace.core.types import (
+    ModelConfig as TypesModelConfig,
 )
 
 __all__ = [
@@ -74,41 +148,103 @@ __all__ = [
     "AgentBase",
     "TaskBase",
     "ResultBase",
-    "MemoryBase",
     "ToolBase",
     # Framework
     "PalaceFramework",
-    # Orchestrator
-    "Orchestrator",
+    "ExecutionResult",
+    "ProjectStatus",
     # Configuration
-    "Config",
-    "AgentConfig",
+    "Settings",
+    "get_settings",
+    "OllamaConfig",
     "ModelConfig",
     "MemoryConfig",
-    "load_config",
-    "get_settings",
+    "APIConfig",
+    "CLIConfig",
+    "LoggingConfig",
+    "DatabaseConfig",
+    "ProjectsConfig",
+    "SecurityConfig",
     # Exceptions
     "PalaceError",
     "ConfigurationError",
+    "MissingConfigError",
+    "InvalidConfigError",
     "AgentNotFoundError",
     "AgentExecutionError",
+    "OrchestratorError",
     "TaskExecutionError",
-    "PipelineError",
+    "TaskRoutingError",
+    "WorkflowError",
     "MemoryError",
     "MemoryStoreError",
-    "OrchestratorError",
-    "ValidationError",
+    "MemoryRetrievalError",
+    "EmbeddingError",
+    "ContextError",
+    "ProjectNotFoundError",
+    "SessionNotFoundError",
+    "ContextRetrievalError",
+    "ToolError",
+    "ToolNotFoundError",
+    "ToolExecutionError",
+    "ToolTimeoutError",
+    "APIError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "RateLimitError",
+    "PipelineError",
+    "PipelineNotFoundError",
+    "PipelineExecutionError",
+    "ModelError",
+    "ModelNotAvailableError",
+    "ModelResponseError",
     # Types
     "AgentCapability",
-    "AgentInfo",
-    "AgentState",
-    "AgentStatus",
+    "AgentRole",
+    "AgentConfig",
+    "AgentResult",
+    "MemoryType",
+    "MessageType",
+    "Message",
+    "MemoryEntry",
+    "ProjectConfig",
+    "ProjectContext",
+    "SessionContext",
+    "TaskDefinition",
     "TaskPriority",
     "TaskStatus",
     "TaskResult",
-    "MemoryType",
-    "MemoryEntry",
-    "ProjectContext",
-    "SessionContext",
-    "ToolInfo",
+    "ModelConfig",
+    # Cost tracking
+    "CostTracker",
+    "CostTier",
+    "ModelPricing",
+    "UsageRecord",
+    "CostBudget",
+    # Resilience
+    "CircuitBreaker",
+    "CircuitBreakerConfig",
+    "CircuitOpenError",
+    "CircuitState",
+    "ModelFallback",
+    "RetryConfig",
+    "RetryWithBackoff",
+    "retry",
+    # Memory quality
+    "QualityScore",
+    "CleanupPolicy",
+    "MemoryQualityChecker",
+    "MemoryCleanupTask",
+    # Logging
+    "LogLevel",
+    "configure_logging",
+    "get_logger",
+    "bind_context",
+    "unbind_context",
+    "clear_context",
+    "get_context",
+    "new_correlation_id",
+    "set_correlation_id",
+    "get_correlation_id",
+    "log_performance",
 ]

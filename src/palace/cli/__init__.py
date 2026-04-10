@@ -31,9 +31,8 @@ Architecture:
     - config/: CLI configuration management
 """
 
-from palace.cli.main import app, run_cli
+from palace.cli.main import app
 
 __all__ = [
     "app",
-    "run_cli",
 ]

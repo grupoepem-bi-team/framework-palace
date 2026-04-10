@@ -401,18 +401,20 @@ class VectorStoreBase(ABC):
         """
         Validate and normalize metadata.
 
+        Preserves all metadata fields from the input while ensuring
+        required fields (project_id, memory_type, created_at) have
+        default values if not provided.
+
         Args:
             metadata: Raw metadata dictionary
 
         Returns:
             Validated metadata dictionary
         """
-        validated = {}
-        for field_name in self.config.metadata_fields:
-            if field_name in metadata:
-                validated[field_name] = metadata[field_name]
+        # Start with all provided metadata fields
+        validated = dict(metadata)
 
-        # Ensure required fields
+        # Ensure required fields have defaults
         if "project_id" not in validated:
             validated["project_id"] = "default"
         if "memory_type" not in validated:

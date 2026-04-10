@@ -20,8 +20,8 @@ import structlog
 from palace.context.manager import ContextManager
 from palace.core.exceptions import (
     AgentNotFoundError,
-    OrchestrationError,
-    PalaceException,
+    OrchestratorError,
+    PalaceError,
     TaskExecutionError,
 )
 from palace.core.types import (

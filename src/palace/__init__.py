@@ -34,71 +34,52 @@ Version: 0.1.0
 __version__ = "0.1.0"
 __author__ = "Palace Framework Team"
 
-# Core abstractions - exposed at package level
-from palace.core.base import AgentBase, ResultBase, TaskBase
-
-# Framework entry point
-from palace.core.framework import PalaceFramework
-from palace.core.orchestrator import Orchestrator
+# Core types - always safe to import (no side effects)
+# Core exceptions - always safe to import
+from palace.core.exceptions import PalaceError
 from palace.core.types import (
     AgentCapability,
+    AgentConfig,
+    AgentResult,
+    AgentRole,
+    MemoryEntry,
+    MemoryType,
+    Message,
+    MessageType,
+    ProjectConfig,
     ProjectContext,
     SessionContext,
+    TaskDefinition,
+    TaskPriority,
+    TaskResult,
     TaskStatus,
 )
 
-# Agent registry
-from palace.agents import (
-    BackendAgent,
-    DBAAgent,
-    DesignerAgent,
-    DevOpsAgent,
-    FrontendAgent,
-    InfraAgent,
-    QAAgent,
-    ReviewerAgent,
-    get_agent,
-    list_agents,
-)
-
-# Context management
-from palace.context import ContextManager, ProjectContextManager
-
-# Memory management
-from palace.memory import MemoryStore, MemoryType, VectorStore
+# Core types - dataclasses
+from palace.core.types import ModelConfig as TypesModelConfig
 
 # Public API
 __all__ = [
     # Version info
     "__version__",
     "__author__",
-    # Core
-    "PalaceFramework",
-    "Orchestrator",
-    "AgentBase",
-    "TaskBase",
-    "ResultBase",
     # Types
     "AgentCapability",
-    "TaskStatus",
+    "AgentRole",
+    "AgentConfig",
+    "AgentResult",
+    "MemoryType",
+    "MessageType",
+    "Message",
+    "MemoryEntry",
+    "ProjectConfig",
     "ProjectContext",
     "SessionContext",
-    # Agents
-    "BackendAgent",
-    "FrontendAgent",
-    "DevOpsAgent",
-    "InfraAgent",
-    "DBAAgent",
-    "QAAgent",
-    "DesignerAgent",
-    "ReviewerAgent",
-    "get_agent",
-    "list_agents",
-    # Memory
-    "MemoryStore",
-    "VectorStore",
-    "MemoryType",
-    # Context
-    "ContextManager",
-    "ProjectContextManager",
+    "TaskDefinition",
+    "TaskPriority",
+    "TaskStatus",
+    "TaskResult",
+    "ModelConfig",
+    # Exceptions
+    "PalaceError",
 ]

@@ -467,7 +467,7 @@ async def list_projects(framework: PalaceFramework = Depends(get_framework)):
         )
 
 
-@app.get("/projects/{project_id}/status", response_model=ProjectStatus, tags=["Projects"])
+@app.get("/projects/{project_id}/status", tags=["Projects"])
 async def get_project_status(project_id: str, framework: PalaceFramework = Depends(get_framework)):
     """
     Get detailed project status.

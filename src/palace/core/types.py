@@ -516,6 +516,37 @@ class AgentConfig:
     timeout_seconds: int = 300
 
 
+@dataclass
+class TaskResult:
+    """Result of a task execution through the orchestrator."""
+
+    task_id: str
+    status: TaskStatus
+    content: str = ""
+    """Main output content."""
+
+    artifacts: Dict[str, Any] = field(default_factory=dict)
+    """Generated artifacts."""
+
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    """Additional metadata."""
+
+    errors: List[str] = field(default_factory=list)
+    """Error messages if any."""
+
+    agent_results: List[AgentResult] = field(default_factory=list)
+    """Results from individual agents involved."""
+
+    execution_time_ms: int = 0
+    """Execution time in milliseconds."""
+
+    tokens_used: int = 0
+    """Total tokens consumed."""
+
+    model_used: str = ""
+    """Primary LLM model used."""
+
+
 # ============================================================================
 # Type Aliases
 # ============================================================================

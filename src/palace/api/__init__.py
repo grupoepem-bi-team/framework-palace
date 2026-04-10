@@ -11,30 +11,25 @@ It exposes endpoints for:
 - Session management (create sessions, get history)
 - WebSocket streaming for real-time updates
 
-Architecture:
-    - routers: API route definitions
-    - dependencies: Dependency injection for FastAPI
-    - middleware: Request/response processing
-    - models: API request/response models
-    - exceptions: API-specific exceptions
-    - auth: Authentication and authorization
+Components:
+    - main: FastAPI application instance, endpoints, and request/response models
 """
 
-from palace.api.app import create_app, get_app
-from palace.api.dependencies import get_context_manager, get_memory_store, get_orchestrator
-from palace.api.models import (
+from palace.api.main import (
     AgentInfoResponse,
     ErrorResponse,
     HealthResponse,
     MemoryEntryRequest,
-    MemoryEntryResponse,
-    MemorySearchRequest,
-    MemorySearchResponse,
+    MemoryQueryRequest,
+    MemoryResponse,
     ProjectCreateRequest,
     ProjectResponse,
+    SessionCreateRequest,
+    SessionResponse,
     TaskCreateRequest,
     TaskResponse,
-    TaskStatusResponse,
+    app,
+    get_framework,
 )
 
 # API version
@@ -42,25 +37,21 @@ __version__ = "1.0.0"
 
 # Public API
 __all__ = [
-    # App factory
-    "create_app",
-    "get_app",
-    # Dependencies
-    "get_orchestrator",
-    "get_memory_store",
-    "get_context_manager",
+    # App
+    "app",
+    "get_framework",
     # Request models
     "ProjectCreateRequest",
     "TaskCreateRequest",
+    "SessionCreateRequest",
+    "MemoryQueryRequest",
     "MemoryEntryRequest",
-    "MemorySearchRequest",
     # Response models
     "ProjectResponse",
     "TaskResponse",
-    "TaskStatusResponse",
+    "SessionResponse",
+    "MemoryResponse",
     "AgentInfoResponse",
-    "MemoryEntryResponse",
-    "MemorySearchResponse",
     "HealthResponse",
     "ErrorResponse",
 ]
