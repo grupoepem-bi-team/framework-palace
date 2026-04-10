@@ -15,8 +15,8 @@ Este documento describe el estado de implementación de los módulos del framewo
 | 5. Memoria | ✅ Completado | Sistema vectorial con múltiples backends implementado |
 | 6. Contexto | ✅ Completado | Project Loader, Context Builder, Retriever, Session Manager implementados |
 | 7. Pipeline | ❌ Pendiente | Directorio creado pero sin implementación |
-| 8. API | ⚠️ Parcial | FastAPI básico implementado, faltan endpoints |
-| 9. CLI | ⚠️ Parcial | Comandos básicos implementados |
+| 8. API | ✅ Completado | Endpoints REST implementados con integración real al framework |
+| 9. CLI | ✅ Completado | Comandos CLI implementados con integración real al framework |
 | 10. Zep | ✅ Completado | Integración con Zep implementada en vector store |
 | 11. Refinamiento | ❌ Pendiente | Por implementar |
 
@@ -185,29 +185,66 @@ src/palace/
 **Ubicación:** `src/palace/pipelines/`
 **Observaciones:** Directorio creado pero solo contiene `__init__.py`
 
-### ⚠️ Módulo 8: API
-**Estado:** Parcialmente implementado
-**Ubicación:** `src/palace/api/main.py`
-**Implementado:**
-- ✅ Aplicación FastAPI básica
-- ✅ Lifespan management para el framework
-- ✅ Configuración de CORS
-- ⚠️ **Faltan endpoints:**
-  - `/task` - Ejecución de tareas
-  - `/project/load` - Carga de proyectos
-  - `/memory/search` - Búsqueda en memoria
-  - Otros endpoints mencionados en el diseño
+### ✅ Módulo 8: API
+**Estado:** Completado
+**Ubicación:** `src/palace/api/`
+**Componentes implementados:**
 
-### ⚠️ Módulo 9: CLI
-**Estado:** Parcialmente implementado
-**Ubicación:** `src/palace/cli/main.py`
-**Implementado:**
-- ✅ Aplicación Typer básica
-- ✅ Comando `init` para inicialización de proyectos
-- ⚠️ **Faltan comandos:**
-  - `attach` - Adjuntar a proyecto existente
-  - `run` - Ejecutar tareas
-  - Comandos completos según módulo 9
+- ✅ Aplicación FastAPI con lifespan management y CORS
+- ✅ **Proyectos** — CRUD completo:
+  - `POST /projects` — Crear proyecto (integrado con ContextManager)
+  - `GET /projects` — Listar proyectos (integrado con ContextManager)
+  - `GET /projects/{project_id}` — Obtener proyecto con datos reales
+  - `DELETE /projects/{project_id}` — Eliminar proyecto
+  - `GET /projects/{project_id}/status` — Estado del proyecto
+- ✅ **Tareas** — Ejecución y consulta:
+  - `POST /tasks` — Crear y ejecutar tarea via Orchestrator
+  - `GET /tasks/{task_id}` — Consultar estado de tarea
+- ✅ **Sesiones** — Gestión completa:
+  - `POST /sessions` — Crear sesión (integrado con ContextManager)
+  - `GET /sessions/{session_id}` — Obtener sesión con datos reales
+  - `GET /sessions/{session_id}/history` — Historial con paginación
+- ✅ **Memoria** — Búsqueda y almacenamiento:
+  - `POST /memory/query` — Búsqueda semántica (integrado con ContextManager.retrieve_context)
+  - `POST /memory/entries` — Añadir entrada (integrado con MemoryStore)
+  - `GET /memory/types` — Listar tipos de memoria
+- ✅ **Agentes** — Información dinámica:
+  - `GET /agents` — Listar agentes desde instancias reales del Orchestrator
+  - `GET /agents/{agent_name}` — Detalle de agente con datos dinámicos
+- ✅ **Sistema** — Health check y configuración:
+  - `GET /health` — Health check
+  - `GET /` — Info de la API
+  - `POST /debug/reload` — Recargar framework (desarrollo)
+  - `GET /debug/config` — Ver configuración (desarrollo)
+- ✅ Modelos Pydantic para request/response
+- ✅ Manejo de errores con PalaceError y HTTPException
+
+### ✅ Módulo 9: CLI
+**Estado:** Completado
+**Ubicación:** `src/palace/cli/`
+**Componentes implementados:**
+
+- ✅ Aplicación Typer con Rich para output formateado
+- ✅ **Proyectos:**
+  - `palace init` — Inicializar proyecto con carga de `/ai_context/` via ProjectLoader
+  - `palace attach` — Adjuntar a proyecto existente y cargar contexto
+  - `palace status` — Ver estado del proyecto
+  - `palace list` — Listar proyectos
+- ✅ **Tareas:**
+  - `palace run` — Ejecutar tarea con opciones `--project`, `--agent`, `--session`, `--verbose`
+- ✅ **Agentes:**
+  - `palace agents` — Listar agentes dinámicamente desde el Orchestrator
+  - `palace info` — Información detallada de agente con datos reales
+- ✅ **Memoria:**
+  - `palace memory query` — Búsqueda semántica con `--type`, `--top`, `--project`
+  - `palace memory add` — Añadir entrada con tipo y metadatos
+- ✅ **Sesiones:**
+  - `palace session new` — Crear sesión (integrado con ContextManager)
+  - `palace session history` — Ver historial con `--limit`
+- ✅ **Configuración:**
+  - `palace config` — Ver configuración actual
+- ✅ **Modo interactivo:**
+  - `palace interactive` — REPL con carga de contexto del proyecto
 
 ### ✅ Módulo 10: Zep
 **Estado:** Completado
@@ -238,9 +275,8 @@ src/palace/
 - **Contexto (Módulo 6)** ← Recién completado
 - Integración Zep (Módulo 10)
 
-### ⚠️ Parcialmente Implementados (2 módulos)
-- API (Módulo 8) - Estructura base, faltan endpoints
-- CLI (Módulo 9) - Estructura base, faltan comandos
+### ⚠️ Parcialmente Implementados (0 módulos)
+(Ningún módulo queda parcialmente implementado)
 
 ### ❌ Pendientes (2 módulos)
 - Pipeline (Módulo 7)
@@ -248,9 +284,8 @@ src/palace/
 
 ## Próximos Pasos Recomendados
 
-1. **Completar API (Módulo 8)**: Implementar endpoints REST para tareas, proyectos y memoria
-2. **Completar CLI (Módulo 9)**: Implementar comandos run, attach, status, memory
-3. **Implementar pipeline (Módulo 7)**: Crear flujos de trabajo completos
+1. **Implementar pipeline (Módulo 7)**: Crear flujos de trabajo completos (Development, BugFix, Refactoring, Review)
+2. **Implementar refinamiento (Módulo 11)**: Añadir manejo de errores, logging estructurado, control de costos
 4. **Implementar refinamiento (Módulo 11)**: Añadir características de robustez
 
 ## Notas Técnicas
@@ -262,7 +297,9 @@ src/palace/
 - La integración entre componentes necesita ser probada
 - Todos los agentes siguen un patrón consistente (run → can_handle → _build_system_prompt)
 - El ContextBuilder gestiona el presupuesto de tokens y el ensamblaje del prompt final
+- API y CLI integrados directamente con ContextManager y MemoryStore (sin acceder a atributos privados del Orchestrator)
+- CLI incluye comando `attach` para conectar a proyectos existentes y cargar contexto
 
 ---
-*Última actualización: 2025-04-09*
+*Última actualización: 2025-04-09 — Módulos 8 y 9 completados*
 *Basado en análisis del código en `framework-palace/src/*`*

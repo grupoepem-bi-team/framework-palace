@@ -13,6 +13,7 @@ Endpoints:
 """
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -23,7 +24,9 @@ from pydantic import BaseModel, Field
 
 from palace.core.config import get_settings
 from palace.core.exceptions import PalaceError
-from palace.core.framework import ExecutionResult, PalaceFramework, ProjectStatus
+from palace.core.framework import PalaceFramework, ProjectStatus
+from palace.core.types import MemoryType as CoreMemoryType
+from palace.memory.base import MemoryEntry, MemoryType
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -360,16 +363,39 @@ async def create_project(
     """
     logger.info("creating_project", name=request.name)
 
-    # TODO: Implement project creation via context manager
-    project_id = f"proj_{request.name.lower().replace(' ', '_')}"
+    try:
+        project_id = f"proj_{request.name.lower().replace(' ', '_')}"
 
-    return ProjectResponse(
-        project_id=project_id,
-        name=request.name,
-        description=request.description,
-        status="active",
-        created_at="2024-01-01T00:00:00Z",  # TODO: Use actual timestamp
-    )
+        config = {}
+        if request.backend_framework:
+            config["backend_framework"] = request.backend_framework
+        if request.frontend_framework:
+            config["frontend_framework"] = request.frontend_framework
+        if request.database:
+            config["database"] = request.database
+
+        project_context = await framework._context_manager.create_project(
+            project_id=project_id,
+            name=request.name,
+            description=request.description,
+            config=config,
+        )
+
+        return ProjectResponse(
+            project_id=project_id,
+            name=project_context.config.name,
+            description=project_context.config.description,
+            status="active",
+            created_at=project_context.config.created_at.isoformat() + "Z",
+        )
+    except PalaceError:
+        raise
+    except Exception as e:
+        logger.error("create_project_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create project: {str(e)}",
+        )
 
 
 @app.get("/projects/{project_id}", response_model=ProjectResponse, tags=["Projects"])
@@ -380,15 +406,24 @@ async def get_project(project_id: str, framework: PalaceFramework = Depends(get_
     Returns details about a specific project including its
     configuration and current status.
     """
-    status_info = await framework.get_project_status(project_id)
+    try:
+        project_context = await framework._context_manager.get_project_context(project_id)
 
-    return ProjectResponse(
-        project_id=project_id,
-        name=project_id,  # TODO: Get from context
-        description=None,
-        status=status_info.status,
-        created_at=status_info.last_activity,
-    )
+        return ProjectResponse(
+            project_id=project_id,
+            name=project_context.config.name,
+            description=project_context.config.description,
+            status="active",
+            created_at=project_context.config.created_at.isoformat() + "Z",
+        )
+    except PalaceError:
+        raise
+    except Exception as e:
+        logger.error("get_project_failed", project_id=project_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found: {str(e)}",
+        )
 
 
 @app.get("/projects", response_model=List[ProjectResponse], tags=["Projects"])
@@ -398,18 +433,38 @@ async def list_projects(framework: PalaceFramework = Depends(get_framework)):
 
     Returns a list of all active projects in the framework.
     """
-    project_ids = framework._orchestrator.list_active_projects()
-
-    return [
-        ProjectResponse(
-            project_id=pid,
-            name=pid,
-            description=None,
-            status="active",
-            created_at="2024-01-01T00:00:00Z",
+    try:
+        project_ids = framework._context_manager.list_projects()
+        projects = []
+        for pid in project_ids:
+            try:
+                ctx = await framework._context_manager.get_project_context(pid)
+                projects.append(
+                    ProjectResponse(
+                        project_id=pid,
+                        name=ctx.config.name,
+                        description=ctx.config.description,
+                        status="active",
+                        created_at=ctx.config.created_at.isoformat() + "Z",
+                    )
+                )
+            except Exception:
+                projects.append(
+                    ProjectResponse(
+                        project_id=pid,
+                        name=pid,
+                        description=None,
+                        status="active",
+                        created_at=datetime.utcnow().isoformat() + "Z",
+                    )
+                )
+        return projects
+    except Exception as e:
+        logger.error("list_projects_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list projects: {str(e)}",
         )
-        for pid in project_ids
-    ]
 
 
 @app.get("/projects/{project_id}/status", response_model=ProjectStatus, tags=["Projects"])
@@ -421,6 +476,27 @@ async def get_project_status(project_id: str, framework: PalaceFramework = Depen
     active tasks and recent activity.
     """
     return await framework.get_project_status(project_id)
+
+
+@app.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Projects"])
+async def delete_project(project_id: str, framework: PalaceFramework = Depends(get_framework)):
+    """
+    Delete a project.
+
+    Removes a project and all its associated context, sessions, and memory.
+    This action is irreversible.
+    """
+    try:
+        await framework._context_manager.delete_project(project_id)
+        logger.info("project_deleted", project_id=project_id)
+    except PalaceError:
+        raise
+    except Exception as e:
+        logger.error("delete_project_failed", project_id=project_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found: {str(e)}",
+        )
 
 
 # =============================================================================
@@ -477,8 +553,18 @@ async def get_task_status(
 
     Returns the current status and result (if completed) of a task.
     """
-    # TODO: Implement task status retrieval
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Task {task_id} not found")
+    # Task tracking is not yet fully implemented in the framework.
+    # Once a task store is available, this endpoint will return actual task status.
+    # For now, return a meaningful response indicating the feature is pending.
+    logger.warning("task_status_not_implemented", task_id=task_id, project_id=project_id)
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=(
+            f"Task {task_id} not found. "
+            "Task status tracking is not yet fully implemented. "
+            "Tasks executed via POST /tasks return results synchronously."
+        ),
+    )
 
 
 # =============================================================================
@@ -503,34 +589,61 @@ async def create_session(
     """
     logger.info("creating_session", project_id=request.project_id)
 
-    # TODO: Implement session creation via context manager
-    session_id = f"sess_{request.project_id}"
+    try:
+        session = await framework._context_manager.create_session(request.project_id)
 
-    return SessionResponse(
-        session_id=session_id,
-        project_id=request.project_id,
-        created_at="2024-01-01T00:00:00Z",
-        message_count=0,
-    )
+        return SessionResponse(
+            session_id=str(session.session_id),
+            project_id=request.project_id,
+            created_at=session.created_at.isoformat() + "Z",
+            message_count=len(session.messages),
+        )
+    except PalaceError:
+        raise
+    except Exception as e:
+        logger.error("create_session_failed", project_id=request.project_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create session: {str(e)}",
+        )
 
 
 @app.get("/sessions/{session_id}", response_model=SessionResponse, tags=["Sessions"])
-async def get_session(session_id: str, framework: PalaceFramework = Depends(get_framework)):
+async def get_session(
+    session_id: str,
+    project_id: str = Query(..., description="Project identifier"),
+    framework: PalaceFramework = Depends(get_framework),
+):
     """
     Get session information.
 
     Returns details about a specific session including
     message count and creation time.
     """
-    # TODO: Implement session retrieval
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found"
-    )
+    try:
+        session = await framework._context_manager.get_session(project_id, session_id)
+        return SessionResponse(
+            session_id=str(session.session_id),
+            project_id=project_id,
+            created_at=session.created_at.isoformat() + "Z",
+            message_count=len(session.messages),
+        )
+    except PalaceError:
+        raise
+    except Exception as e:
+        logger.error(
+            "get_session_failed", session_id=session_id, project_id=project_id, error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session {session_id} not found: {str(e)}",
+        )
 
 
 @app.get("/sessions/{session_id}/history", tags=["Sessions"])
 async def get_session_history(
     session_id: str,
+    project_id: str = Query(..., description="Project identifier"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     framework: PalaceFramework = Depends(get_framework),
@@ -540,8 +653,30 @@ async def get_session_history(
 
     Returns the conversation history for a session with pagination.
     """
-    # TODO: Implement history retrieval from memory
-    return {"session_id": session_id, "messages": [], "total": 0, "limit": limit, "offset": offset}
+    try:
+        messages = await framework._context_manager.get_session_history(
+            project_id=project_id,
+            session_id=session_id,
+            limit=limit,
+        )
+        return {
+            "session_id": session_id,
+            "project_id": project_id,
+            "messages": messages[offset : offset + limit],
+            "total": len(messages),
+            "limit": limit,
+            "offset": offset,
+        }
+    except PalaceError:
+        raise
+    except Exception as e:
+        logger.error(
+            "get_session_history_failed", session_id=session_id, project_id=project_id, error=str(e)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session {session_id} not found: {str(e)}",
+        )
 
 
 # =============================================================================
@@ -561,8 +696,45 @@ async def query_memory(
     """
     logger.info("querying_memory", project_id=request.project_id, query_preview=request.query[:50])
 
-    # TODO: Implement memory query
-    return MemoryResponse(entries=[], total=0)
+    try:
+        memory_types = None
+        if request.memory_type:
+            try:
+                memory_types = [CoreMemoryType(request.memory_type)]
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid memory type: {request.memory_type}. "
+                    f"Valid types: {[mt.value for mt in CoreMemoryType]}",
+                )
+
+        results = await framework._context_manager.retrieve_context(
+            project_id=request.project_id,
+            query=request.query,
+            top_k=request.top_k,
+            memory_types=memory_types,
+        )
+
+        entries = []
+        for result in results:
+            entry_data = result
+            if hasattr(result, "to_dict"):
+                entry_data = result.to_dict()
+            elif hasattr(result, "model_dump"):
+                entry_data = result.model_dump()
+            entries.append(entry_data)
+
+        return MemoryResponse(entries=entries, total=len(entries))
+    except PalaceError:
+        raise
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("query_memory_failed", project_id=request.project_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to query memory: {str(e)}",
+        )
 
 
 @app.post("/memory/entries", status_code=status.HTTP_201_CREATED, tags=["Memory"])
@@ -579,12 +751,43 @@ async def add_memory_entry(
         "adding_memory_entry", project_id=request.project_id, memory_type=request.memory_type
     )
 
-    # TODO: Implement memory entry addition
-    return {
-        "status": "created",
-        "project_id": request.project_id,
-        "memory_type": request.memory_type,
-    }
+    try:
+        try:
+            mem_type = MemoryType(request.memory_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid memory type: {request.memory_type}. "
+                f"Valid types: {[mt.value for mt in MemoryType]}",
+            )
+
+        entry = MemoryEntry(
+            memory_type=mem_type,
+            project_id=request.project_id,
+            content=request.content,
+            metadata=request.metadata or {},
+            source="api",
+        )
+
+        entry_id = await framework._memory_store.store(entry)
+
+        return {
+            "status": "created",
+            "entry_id": entry_id,
+            "project_id": request.project_id,
+            "memory_type": request.memory_type,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+        }
+    except PalaceError:
+        raise
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("add_memory_entry_failed", project_id=request.project_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to add memory entry: {str(e)}",
+        )
 
 
 @app.get("/memory/types", tags=["Memory"])
@@ -618,61 +821,62 @@ async def list_agents(framework: PalaceFramework = Depends(get_framework)):
     Returns information about all agents registered in the framework
     including their capabilities and current status.
     """
-    agents = await framework.list_agents()
+    try:
+        agents_dict = framework._orchestrator._agents
 
-    # TODO: Get actual agent info from orchestrator
-    agent_info = [
-        AgentInfoResponse(
-            name="backend",
-            model="qwen3-coder-next",
-            description="Backend development specialist",
-            capabilities=["backend_development", "testing"],
-            tools=["shell", "file_read", "file_write", "linter", "test_runner"],
-            status="idle",
-        ),
-        AgentInfoResponse(
-            name="frontend",
-            model="qwen3-coder-next",
-            description="Frontend development specialist",
-            capabilities=["frontend_development", "testing", "ui_ux_design"],
-            tools=["shell", "file_read", "file_write", "linter", "test_runner"],
-            status="idle",
-        ),
-        AgentInfoResponse(
-            name="devops",
-            model="qwen3.5",
-            description="DevOps and CI/CD specialist",
-            capabilities=["devops", "infrastructure_as_code"],
-            tools=["shell", "file_write", "git", "docker", "kubernetes"],
-            status="idle",
-        ),
-        AgentInfoResponse(
-            name="dba",
-            model="deepseek-v3.2",
-            description="Database administration specialist",
-            capabilities=["database_administration"],
-            tools=["shell", "file_read", "file_write", "sql_runner"],
-            status="idle",
-        ),
-        AgentInfoResponse(
-            name="qa",
-            model="gemma4:31b",
-            description="Quality assurance specialist",
-            capabilities=["quality_assurance", "testing"],
-            tools=["linter", "test_runner", "coverage_analyzer"],
-            status="idle",
-        ),
-        AgentInfoResponse(
-            name="reviewer",
-            model="mistral-large",
-            description="Code review and architecture specialist",
-            capabilities=["code_review", "architecture"],
-            tools=["file_read", "linter", "git"],
-            status="idle",
-        ),
-    ]
+        if agents_dict:
+            agent_info = []
+            for agent_name, agent in agents_dict.items():
+                capabilities = []
+                if hasattr(agent, "capabilities") and agent.capabilities:
+                    capabilities = [
+                        cap.value if hasattr(cap, "value") else str(cap)
+                        for cap in agent.capabilities
+                    ]
 
-    return agent_info
+                tools = []
+                if hasattr(agent, "tools") and agent.tools:
+                    tools = [str(t) for t in agent.tools]
+
+                description = ""
+                if hasattr(agent, "description"):
+                    description = agent.description or ""
+
+                model = ""
+                if hasattr(agent, "model"):
+                    model = agent.model or ""
+
+                agent_info.append(
+                    AgentInfoResponse(
+                        name=agent.name if hasattr(agent, "name") else agent_name,
+                        model=model,
+                        description=description,
+                        capabilities=capabilities,
+                        tools=tools,
+                        status="idle",
+                    )
+                )
+            return agent_info
+
+        # Fallback: return agent names from list_agents if no agent instances registered
+        agent_names = await framework.list_agents()
+        return [
+            AgentInfoResponse(
+                name=name,
+                model="",
+                description="",
+                capabilities=[],
+                tools=[],
+                status="available",
+            )
+            for name in agent_names
+        ]
+    except Exception as e:
+        logger.error("list_agents_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list agents: {str(e)}",
+        )
 
 
 @app.get("/agents/{agent_name}", response_model=AgentInfoResponse, tags=["Agents"])
@@ -683,10 +887,51 @@ async def get_agent_info(agent_name: str, framework: PalaceFramework = Depends(g
     Returns detailed information about a specific agent
     including capabilities, tools, and current status.
     """
-    # TODO: Implement agent info retrieval from orchestrator
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_name} not found"
-    )
+    try:
+        agents_dict = framework._orchestrator._agents
+
+        if agent_name not in agents_dict:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Agent {agent_name} not found",
+            )
+
+        agent = agents_dict[agent_name]
+
+        capabilities = []
+        if hasattr(agent, "capabilities") and agent.capabilities:
+            capabilities = [
+                cap.value if hasattr(cap, "value") else str(cap) for cap in agent.capabilities
+            ]
+
+        tools = []
+        if hasattr(agent, "tools") and agent.tools:
+            tools = [str(t) for t in agent.tools]
+
+        description = ""
+        if hasattr(agent, "description"):
+            description = agent.description or ""
+
+        model = ""
+        if hasattr(agent, "model"):
+            model = agent.model or ""
+
+        return AgentInfoResponse(
+            name=agent.name if hasattr(agent, "name") else agent_name,
+            model=model,
+            description=description,
+            capabilities=capabilities,
+            tools=tools,
+            status="idle",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_agent_info_failed", agent_name=agent_name, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get agent info: {str(e)}",
+        )
 
 
 # =============================================================================

@@ -17,21 +17,19 @@ Usage:
 
 import asyncio
 import json
-import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import typer
-from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.syntax import Syntax
 from rich.table import Table
 
+from palace.context.loader import ProjectLoader
 from palace.core.config import get_settings
 from palace.core.framework import PalaceFramework
+from palace.memory.base import MemoryEntry, MemoryType, SearchQuery
 
 # Create Typer app
 app = typer.Typer(
@@ -75,6 +73,7 @@ def init_project(
     backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Backend framework"),
     frontend: Optional[str] = typer.Option(None, "--frontend", "-f", help="Frontend framework"),
     database: Optional[str] = typer.Option(None, "--db", help="Database type"),
+    path: Optional[str] = typer.Option(None, "--path", "-p", help="Path to project directory"),
 ):
     """
     Initialize a new Palace project.
@@ -85,6 +84,7 @@ def init_project(
     Examples:
         palace init my-api
         palace init my-app --backend fastapi --db postgresql
+        palace init my-app --path /path/to/project
     """
     console.print(f"[bold blue]Initializing project:[/] {name}")
 
@@ -107,10 +107,12 @@ def init_project(
             if database:
                 config["database"] = database
 
-            # Create project
+            project_id = name.lower().replace(" ", "-")
+
+            # Create project using context_manager directly
             context = run_async(
-                framework._orchestrator._context_manager.create_project(
-                    project_id=name.lower().replace(" ", "-"),
+                framework._context_manager.create_project(
+                    project_id=project_id,
                     name=name,
                     description=description,
                     config=config,
@@ -119,11 +121,34 @@ def init_project(
 
             progress.update(task, description="Project created!")
 
+            # Attempt to load project context files from /ai_context/
+            context_files_loaded = []
+            project_path = Path(path) if path else Path.cwd() / project_id
+            try:
+                loader = ProjectLoader(project_path=project_path)
+                _ = run_async(loader.load())
+                if loader.is_loaded:
+                    context_files_loaded = loader.loaded_files
+                    progress.update(
+                        task,
+                        description=f"Loaded {len(context_files_loaded)} context files",
+                    )
+            except Exception:
+                # Context loading is optional — don't fail project creation
+                progress.update(task, description="Project created (no context files found)")
+
+            # Build success message
+            success_msg = (
+                f"[bold green]Project '{name}' created successfully![/]\n\n"
+                f"Project ID: {context.config.project_id}\n"
+            )
+            if context_files_loaded:
+                success_msg += f"Context files loaded: {', '.join(context_files_loaded)}\n"
+            success_msg += "\nUse 'palace run' to execute tasks."
+
             console.print(
                 Panel.fit(
-                    f"[bold green]Project '{name}' created successfully![/]\n\n"
-                    f"Project ID: {context.config.project_id}\n"
-                    f"Use 'palace run' to execute tasks.",
+                    success_msg,
                     title="[bold]Palace Project[/]",
                     border_style="green",
                 )
@@ -334,8 +359,8 @@ def list_agents(
         framework = get_framework()
         agents = run_async(framework.list_agents())
 
-        # Agent info mapping
-        agent_info = {
+        # Fallback agent info mapping (used when agent instances are unavailable)
+        agent_info_fallback = {
             "backend": {
                 "model": "qwen3-coder-next",
                 "description": "Backend development specialist",
@@ -374,8 +399,36 @@ def list_agents(
             },
         }
 
+        # Build agent info dynamically from orchestrator._agents
+        agent_info = {}
+        orchestrator = framework._orchestrator
+        for agent_name in agents:
+            if hasattr(orchestrator, "_agents") and agent_name in orchestrator._agents:
+                agent = orchestrator._agents[agent_name]
+                agent_info[agent_name] = {
+                    "model": getattr(agent, "model", "unknown"),
+                    "description": getattr(agent, "_get_description", lambda: "")()
+                    if hasattr(agent, "_get_description")
+                    else str(getattr(agent, "role", "")),
+                    "capabilities": getattr(agent.capabilities, "to_list", lambda: [])()
+                    if hasattr(agent, "capabilities") and hasattr(agent.capabilities, "to_list")
+                    else [],
+                    "tools": getattr(agent, "tools", []),
+                }
+            else:
+                # Fallback to hardcoded info
+                agent_info[agent_name] = agent_info_fallback.get(
+                    agent_name,
+                    {
+                        "model": "unknown",
+                        "description": "",
+                        "capabilities": [],
+                        "tools": [],
+                    },
+                )
+
         if json_output:
-            console.print_json(json.dumps({"agents": agents}, indent=2))
+            console.print_json(json.dumps({"agents": agent_info}, indent=2))
         else:
             table = Table(title="Available Agents")
             table.add_column("Agent", style="cyan")
@@ -383,13 +436,12 @@ def list_agents(
             table.add_column("Description", style="white")
             table.add_column("Capabilities", style="yellow")
 
-            for agent_name in agents:
-                info = agent_info.get(agent_name, {})
+            for agent_name, info in agent_info.items():
                 table.add_row(
                     agent_name,
                     info.get("model", "unknown"),
                     info.get("description", ""),
-                    ", ".join(info.get("capabilities", [])[:2]),
+                    ", ".join(info.get("capabilities", [])[:3]),
                 )
 
             console.print(table)
@@ -410,73 +462,121 @@ def agent_info(
         palace info backend
         palace info qa
     """
-    agent_data = {
-        "backend": {
-            "model": "qwen3-coder-next",
-            "description": "Backend development specialist for APIs, services, and business logic",
-            "capabilities": [
-                "backend_development",
-                "fullstack_development",
-                "testing",
-                "documentation",
-            ],
-            "tools": ["shell", "file_read", "file_write", "linter", "test_runner", "http_client"],
-            "frameworks": ["FastAPI", "Django", "Flask", "SQLAlchemy"],
-        },
-        "frontend": {
-            "model": "qwen3-coder-next",
-            "description": "Frontend development specialist for UI components and client-side logic",
-            "capabilities": ["frontend_development", "testing", "ui_ux_design"],
-            "tools": ["shell", "file_read", "file_write", "linter", "test_runner"],
-            "frameworks": ["React", "Vue", "Angular", "TypeScript"],
-        },
-        "devops": {
-            "model": "qwen3.5",
-            "description": "DevOps specialist for CI/CD, deployment, and infrastructure",
-            "capabilities": ["devops", "infrastructure_as_code", "documentation"],
-            "tools": ["shell", "file_write", "git", "docker", "kubernetes"],
-            "tools_detail": ["GitHub Actions", "GitLab CI", "Docker", "Kubernetes", "Terraform"],
-        },
-        "dba": {
-            "model": "deepseek-v3.2",
-            "description": "Database specialist for schema design, migrations, and optimization",
-            "capabilities": ["database_administration"],
-            "tools": ["shell", "file_read", "file_write", "sql_runner"],
-            "databases": ["PostgreSQL", "MySQL", "MongoDB", "Redis"],
-        },
-        "qa": {
-            "model": "gemma4:31b",
-            "description": "Quality assurance specialist for testing and code quality",
-            "capabilities": ["quality_assurance", "testing"],
-            "tools": ["linter", "test_runner", "coverage_analyzer"],
-            "tools_detail": ["pytest", "jest", "cypress", "sonarqube"],
-        },
-        "reviewer": {
-            "model": "mistral-large",
-            "description": "Code review and architecture specialist",
-            "capabilities": ["code_review", "architecture"],
-            "tools": ["file_read", "linter", "git"],
-        },
-    }
+    try:
+        framework = get_framework()
+        agents = run_async(framework.list_agents())
 
-    if agent_name not in agent_data:
-        console.print(f"[bold red]Error:[/] Agent '{agent_name}' not found")
-        console.print(f"Available agents: {', '.join(agent_data.keys())}")
+        # Fallback agent data (used when agent instances are unavailable)
+        agent_data_fallback = {
+            "backend": {
+                "model": "qwen3-coder-next",
+                "description": "Backend development specialist for APIs, services, and business logic",
+                "capabilities": [
+                    "backend_development",
+                    "fullstack_development",
+                    "testing",
+                    "documentation",
+                ],
+                "tools": [
+                    "shell",
+                    "file_read",
+                    "file_write",
+                    "linter",
+                    "test_runner",
+                    "http_client",
+                ],
+                "frameworks": ["FastAPI", "Django", "Flask", "SQLAlchemy"],
+            },
+            "frontend": {
+                "model": "qwen3-coder-next",
+                "description": "Frontend development specialist for UI components and client-side logic",
+                "capabilities": ["frontend_development", "testing", "ui_ux_design"],
+                "tools": ["shell", "file_read", "file_write", "linter", "test_runner"],
+                "frameworks": ["React", "Vue", "Angular", "TypeScript"],
+            },
+            "devops": {
+                "model": "qwen3.5",
+                "description": "DevOps specialist for CI/CD, deployment, and infrastructure",
+                "capabilities": ["devops", "infrastructure_as_code", "documentation"],
+                "tools": ["shell", "file_write", "git", "docker", "kubernetes"],
+                "tools_detail": [
+                    "GitHub Actions",
+                    "GitLab CI",
+                    "Docker",
+                    "Kubernetes",
+                    "Terraform",
+                ],
+            },
+            "dba": {
+                "model": "deepseek-v3.2",
+                "description": "Database specialist for schema design, migrations, and optimization",
+                "capabilities": ["database_administration"],
+                "tools": ["shell", "file_read", "file_write", "sql_runner"],
+                "databases": ["PostgreSQL", "MySQL", "MongoDB", "Redis"],
+            },
+            "qa": {
+                "model": "gemma4:31b",
+                "description": "Quality assurance specialist for testing and code quality",
+                "capabilities": ["quality_assurance", "testing"],
+                "tools": ["linter", "test_runner", "coverage_analyzer"],
+                "tools_detail": ["pytest", "jest", "cypress", "sonarqube"],
+            },
+            "reviewer": {
+                "model": "mistral-large",
+                "description": "Code review and architecture specialist",
+                "capabilities": ["code_review", "architecture"],
+                "tools": ["file_read", "linter", "git"],
+            },
+        }
+
+        if agent_name not in agents:
+            console.print(f"[bold red]Error:[/] Agent '{agent_name}' not found")
+            console.print(f"Available agents: {', '.join(agents)}")
+            raise typer.Exit(1)
+
+        # Try to get actual agent info from orchestrator
+        info = None
+        orchestrator = framework._orchestrator
+        if hasattr(orchestrator, "_agents") and agent_name in orchestrator._agents:
+            agent = orchestrator._agents[agent_name]
+            info = {
+                "model": getattr(agent, "model", "unknown"),
+                "description": getattr(agent, "_get_description", lambda: "")()
+                if hasattr(agent, "_get_description")
+                else str(getattr(agent, "role", "")),
+                "capabilities": getattr(agent.capabilities, "to_list", lambda: [])()
+                if hasattr(agent, "capabilities") and hasattr(agent.capabilities, "to_list")
+                else [],
+                "tools": getattr(agent, "tools", []),
+            }
+
+        # Fallback to hardcoded info if agent instance not available
+        if info is None:
+            info = agent_data_fallback.get(
+                agent_name,
+                {
+                    "model": "unknown",
+                    "description": "",
+                    "capabilities": [],
+                    "tools": [],
+                },
+            )
+
+        console.print(Panel(f"[bold]{agent_name.upper()}[/] Agent", border_style="cyan"))
+        console.print(f"\n[bold]Model:[/] {info['model']}")
+        console.print(f"[bold]Description:[/] {info['description']}")
+
+        console.print(f"\n[bold]Capabilities:[/]")
+        for cap in info["capabilities"]:
+            console.print(f"  • {cap}")
+
+        console.print(f"\n[bold]Tools:[/]")
+        for tool in info["tools"]:
+            console.print(f"  • {tool}")
+
+    except Exception as e:
+        console.print(f"[bold red]Error:[/] {e}")
         raise typer.Exit(1)
-
-    info = agent_data[agent_name]
-
-    console.print(Panel(f"[bold]{agent_name.upper()}[/] Agent", border_style="cyan"))
-    console.print(f"\n[bold]Model:[/] {info['model']}")
-    console.print(f"[bold]Description:[/] {info['description']}")
-
-    console.print(f"\n[bold]Capabilities:[/]")
-    for cap in info["capabilities"]:
-        console.print(f"  • {cap}")
-
-    console.print(f"\n[bold]Tools:[/]")
-    for tool in info["tools"]:
-        console.print(f"  • {tool}")
 
 
 # =============================================================================
@@ -513,17 +613,59 @@ def query_memory(
     try:
         framework = get_framework()
 
-        # Query memory
-        results = run_async(
-            framework._orchestrator._memory_store.retrieve_context(
-                project_id=target_project,
+        # Map string memory_type to MemoryType enum
+        memory_type_map = {
+            "episodic": MemoryType.EPISODIC,
+            "semantic": MemoryType.SEMANTIC,
+            "procedural": MemoryType.PROCEDURAL,
+            "project": MemoryType.PROJECT,
+        }
+
+        mem_type = None
+        if memory_type and memory_type in memory_type_map:
+            mem_type = memory_type_map[memory_type]
+
+        # Build the search query
+        if mem_type is not None:
+            search_query = SearchQuery(
                 query=query,
+                project_id=target_project,
+                top_k=top_k,
+                memory_types=[mem_type],
+            )
+        else:
+            search_query = SearchQuery(
+                query=query,
+                project_id=target_project,
                 top_k=top_k,
             )
-        )
+
+        # Query memory
+        results = run_async(framework._memory_store.search(search_query))
+
+        # Helper to extract fields from SearchResult dataclass or dict
+        def _get_result_field(result, field, default=None):
+            if hasattr(result, field):
+                return getattr(result, field, default)
+            if isinstance(result, dict):
+                return result.get(field, default)
+            return default
 
         if json_output:
-            console.print_json(json.dumps({"results": results}, indent=2))
+            results_data = []
+            for r in results:
+                if hasattr(r, "to_dict"):
+                    results_data.append(r.to_dict())
+                elif isinstance(r, dict):
+                    results_data.append(r)
+                else:
+                    results_data.append(
+                        {
+                            f: getattr(r, f, None)
+                            for f in ["entry_id", "content", "score", "memory_type", "metadata"]
+                        }
+                    )
+            console.print_json(json.dumps({"results": results_data}, indent=2, default=str))
         else:
             if not results:
                 console.print("[yellow]No results found.[/]")
@@ -532,8 +674,8 @@ def query_memory(
             console.print(f"\n[bold]Found {len(results)} results:[/]\n")
 
             for i, result in enumerate(results, 1):
-                score = result.get("score", 0)
-                content = result.get("content", "")[:200]
+                score = _get_result_field(result, "score", 0) or 0
+                content = str(_get_result_field(result, "content", ""))[:200]
 
                 console.print(f"[bold cyan]Result {i}[/] (score: {score:.3f})")
                 console.print(f"  {content}...")
@@ -564,14 +706,23 @@ def add_memory(
     try:
         framework = get_framework()
 
-        entry_id = run_async(
-            framework._orchestrator._memory_store.store_context(
-                project_id=target_project,
-                content=content,
-                memory_type=memory_type,
-                metadata={"title": title} if title else {},
-            )
+        # Map string memory_type to MemoryType enum
+        memory_type_map = {
+            "episodic": MemoryType.EPISODIC,
+            "semantic": MemoryType.SEMANTIC,
+            "procedural": MemoryType.PROCEDURAL,
+            "project": MemoryType.PROJECT,
+        }
+
+        mem_type = memory_type_map.get(memory_type.lower(), MemoryType.SEMANTIC)
+
+        entry = MemoryEntry(
+            project_id=target_project,
+            content=content,
+            memory_type=mem_type,
+            metadata={"title": title} if title else {},
         )
+        entry_id = run_async(framework._memory_store.store(entry))
 
         console.print(f"[bold green]Memory entry created:[/] {entry_id}")
 
@@ -607,7 +758,7 @@ def new_session(
         framework = get_framework()
 
         session = run_async(
-            framework._orchestrator._context_manager.create_session(
+            framework._context_manager.create_session(
                 project_id=target_project,
             )
         )
@@ -647,7 +798,7 @@ def session_history(
         framework = get_framework()
 
         history = run_async(
-            framework._orchestrator._context_manager.get_session_history(
+            framework._context_manager.get_session_history(
                 project_id=target_project,
                 session_id=session_id,
                 limit=limit,
@@ -663,7 +814,6 @@ def session_history(
         for msg in history:
             role = msg.get("role", "unknown")
             content = msg.get("content", "")
-            timestamp = msg.get("timestamp", "")
 
             role_style = {
                 "user": "blue",
@@ -760,6 +910,82 @@ def show_config(
 
 
 # =============================================================================
+# Attach Command
+# =============================================================================
+
+
+@app.command("attach")
+def attach_project(
+    project_id: str = typer.Argument(..., help="Project ID to attach to"),
+    path: Optional[str] = typer.Option(None, "--path", "-p", help="Path to project directory"),
+):
+    """
+    Attach to an existing project and load its context.
+
+    Loads the project's AI context files and makes it the active project.
+
+    Examples:
+        palace attach my-api
+        palace attach my-api --path /path/to/project
+    """
+    console.print(f"[bold blue]Attaching to project:[/] {project_id}")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Loading project context...", total=None)
+
+        try:
+            framework = get_framework()
+
+            # Set the project as active using context_manager
+            framework._context_manager.set_active_project(project_id)
+            progress.update(task, description="Project set as active")
+
+            # Attempt to load project context files from /ai_context/
+            context_files_loaded = []
+            if path:
+                project_path = Path(path)
+            else:
+                project_path = Path.cwd()
+
+            try:
+                loader = ProjectLoader(project_path=project_path)
+                _ = run_async(loader.load())
+                if loader.is_loaded:
+                    context_files_loaded = loader.loaded_files
+                    progress.update(
+                        task,
+                        description=f"Loaded {len(context_files_loaded)} context files",
+                    )
+            except Exception:
+                progress.update(task, description="Project attached (no context files found)")
+
+            # Build success message
+            success_msg = (
+                f"[bold green]Attached to project '{project_id}'![/]\n\nProject ID: {project_id}\n"
+            )
+            if context_files_loaded:
+                success_msg += f"Context files loaded: {', '.join(context_files_loaded)}\n"
+            success_msg += "\nUse 'palace run' to execute tasks."
+
+            console.print(
+                Panel.fit(
+                    success_msg,
+                    title="[bold]Palace Project[/]",
+                    border_style="green",
+                )
+            )
+
+        except Exception as e:
+            progress.stop()
+            console.print(f"[bold red]Error:[/] {e}")
+            raise typer.Exit(1)
+
+
+# =============================================================================
 # Interactive Mode
 # =============================================================================
 
@@ -780,24 +1006,34 @@ def interactive_mode(
     settings = get_settings()
     target_project = project or settings.cli.default_project
 
-    console.print(
-        Panel.fit(
-            "[bold]Palace Interactive Mode[/]\n\n"
-            f"Project: {target_project}\n"
-            "Type your tasks and press Enter to execute.\n"
-            "Type 'exit' or 'quit' to exit.\n"
-            "Type 'help' for available commands.",
-            border_style="blue",
-        )
-    )
-
     framework = get_framework()
     session_id = None
+    context_files_loaded = []
 
-    # Create a new session
+    # Load project context at startup
+    try:
+        loader = ProjectLoader(project_path=Path.cwd())
+        _ = run_async(loader.load())
+        if loader.is_loaded:
+            context_files_loaded = loader.loaded_files
+    except Exception:
+        pass
+
+    # Build startup message with context info
+    startup_msg = f"[bold]Palace Interactive Mode[/]\n\nProject: {target_project}\n"
+    if context_files_loaded:
+        startup_msg += f"Context files: {', '.join(context_files_loaded)}\n"
+    startup_msg += (
+        "Type your tasks and press Enter to execute.\n"
+        "Type 'exit' or 'quit' to exit.\n"
+        "Type 'help' for available commands."
+    )
+    console.print(Panel.fit(startup_msg, border_style="blue"))
+
+    # Create a new session using context_manager directly
     try:
         session = run_async(
-            framework._orchestrator._context_manager.create_session(
+            framework._context_manager.create_session(
                 project_id=target_project,
             )
         )

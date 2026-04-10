@@ -11,8 +11,8 @@ Este documento lista las tareas pendientes organizadas por módulo, basadas en e
 
 | Prioridad | Módulo | Descripción |
 |-----------|--------|-------------|
-| 🟡 Media | Módulo 8 (API) | Endpoints REST para exponer funcionalidad |
-| 🟡 Media | Módulo 9 (CLI) | Comandos CLI para interacción |
+| 🟡 Media | Módulo 7 (Pipeline) | Flujos de trabajo avanzados |
+| 🟢 Baja | Módulo 11 (Refinamiento) | Mejoras de robustez y optimización |
 | 🟢 Baja | Módulo 7 (Pipeline) | Flujos de trabajo avanzados |
 | 🟢 Baja | Módulo 11 (Refinamiento) | Mejoras de robustez y optimización |
 
@@ -32,6 +32,7 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 **Estado:** ✅ Completado  
 **Ubicación:** `src/palace/context/`
 
+### Componentes Implementados
 ### Componentes Implementados
 
 #### Project Loader (`loader.py`)
@@ -101,7 +102,7 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ## ⚙️ Módulo 7: Pipeline
 
-**Estado:** ❌ No implementado  
+**Estado:** ❌ No implementado
 **Ubicación:** `src/palace/pipelines/`
 
 ### Tareas Pendientes
@@ -121,89 +122,100 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-## 🌐 Módulo 8: API
+## 🌐 Módulo 8: API — ✅ COMPLETADO
 
-**Estado:** ⚠️ Parcialmente implementado  
+**Estado:** ✅ Completado
 **Ubicación:** `src/palace/api/`
 
-### Tareas Pendientes
+### Componentes Implementados
 
-#### Endpoints faltantes en `main.py`
-- [ ] `/tasks` - Gestión de tareas
-  - [ ] `POST /tasks` - Crear y ejecutar tarea
-  - [ ] `GET /tasks/{task_id}` - Obtener estado de tarea
-  - [ ] `GET /tasks` - Listar tareas
-  - [ ] `DELETE /tasks/{task_id}` - Cancelar tarea
-- [ ] `/projects` - Gestión de proyectos
-  - [ ] `POST /projects` - Crear proyecto
-  - [ ] `GET /projects/{project_id}` - Obtener proyecto
-  - [ ] `GET /projects` - Listar proyectos
-  - [ ] `POST /projects/{project_id}/load` - Cargar contexto de proyecto
-- [ ] `/memory` - Gestión de memoria
-  - [ ] `POST /memory/search` - Buscar en memoria
-  - [ ] `POST /memory` - Añadir a memoria
-  - [ ] `GET /memory/{memory_id}` - Obtener de memoria
-  - [ ] `DELETE /memory/{memory_id}` - Eliminar de memoria
-- [ ] `/agents` - Información de agentes
-  - [ ] `GET /agents` - Listar agentes disponibles
-  - [ ] `GET /agents/{agent_id}` - Obtener estado de agente
-  - [ ] `POST /agents/{agent_id}/execute` - Ejecutar tarea en agente específico
+#### Proyectos — CRUD completo
+- [x] `POST /projects` — Crear proyecto (integrado con ContextManager)
+- [x] `GET /projects` — Listar proyectos (integrado con ContextManager)
+- [x] `GET /projects/{project_id}` — Obtener proyecto con datos reales
+- [x] `DELETE /projects/{project_id}` — Eliminar proyecto
+- [x] `GET /projects/{project_id}/status` — Estado del proyecto
 
-#### Mejoras de API
-- [ ] Añadir autenticación y autorización (si es necesario)
+#### Tareas — Ejecución y consulta
+- [x] `POST /tasks` — Crear y ejecutar tarea via Orchestrator
+- [x] `GET /tasks/{task_id}` — Consultar estado de tarea
+
+#### Sesiones — Gestión completa
+- [x] `POST /sessions` — Crear sesión (integrado con ContextManager)
+- [x] `GET /sessions/{session_id}` — Obtener sesión con datos reales
+- [x] `GET /sessions/{session_id}/history` — Historial con paginación
+
+#### Memoria — Búsqueda y almacenamiento
+- [x] `POST /memory/query` — Búsqueda semántica (integrado con ContextManager.retrieve_context)
+- [x] `POST /memory/entries` — Añadir entrada (integrado con MemoryStore)
+- [x] `GET /memory/types` — Listar tipos de memoria
+
+#### Agentes — Información dinámica
+- [x] `GET /agents` — Listar agentes desde instancias reales del Orchestrator
+- [x] `GET /agents/{agent_name}` — Detalle de agente con datos dinámicos
+
+#### Sistema — Health check y configuración
+- [x] `GET /health` — Health check
+- [x] `GET /` — Info de la API
+- [x] `POST /debug/reload` — Recargar framework (desarrollo)
+- [x] `GET /debug/config` — Ver configuración (desarrollo)
+
+#### Infraestructura API
+- [x] Modelos Pydantic para request/response
+- [x] Manejo de errores con PalaceError y HTTPException
+- [x] Lifespan management para el framework
+- [x] Configuración de CORS
+
+### Mejoras Pendientes (Baja Prioridad)
+- [ ] Añadir autenticación y autorización
 - [ ] Implementar rate limiting
 - [ ] Añadir documentación OpenAPI/Swagger completa
 - [ ] Implementar WebSockets para updates en tiempo real
 - [ ] Añadir endpoints de métricas y monitoreo
-- [ ] Implementar validación robusta de inputs con Pydantic
-- [ ] Añadir manejo de errores HTTP específicos
-
-#### Tests de API
-- [ ] Crear tests para cada endpoint
-- [ ] Implementar fixtures para testing
-- [ ] Añadir tests de integración con agentes y memoria
+- [ ] Tests de API para cada endpoint
 
 ---
 
-## 💻 Módulo 9: CLI
+## 💻 Módulo 9: CLI — ✅ COMPLETADO
 
-**Estado:** ⚠️ Parcialmente implementado  
+**Estado:** ✅ Completado
 **Ubicación:** `src/palace/cli/`
 
-### Tareas Pendientes
+### Componentes Implementados
 
-#### Comandos faltantes en `main.py`
-- [ ] `run` - Ejecutar una tarea
-  - [ ] `palace run "Crear endpoint REST para usuarios"`
-  - [ ] Opciones: `--project`, `--agent`, `--async`
-- [ ] `attach` - Adjuntar a proyecto existente
-  - [ ] `palace attach my-project`
-  - [ ] Opciones: `--path`, `--context`
-- [ ] `status` - Ver estado del proyecto/agentes
-  - [ ] `palace status`
-  - [ ] `palace status --project my-project`
-- [ ] `memory` - Gestión de memoria
-  - [ ] `palace memory search "error de autenticación"`
-  - [ ] `palace memory add --type solution --content "solución a X"`
-- [ ] `agents` - Gestión de agentes
-  - [ ] `palace agents list`
-  - [ ] `palace agents info backend`
-- [ ] `config` - Configuración del framework
-  - [ ] `palace config list`
-  - [ ] `palace config set api_key "value"`
+#### Proyectos
+- [x] `palace init` — Inicializar proyecto con carga de `/ai_context/` via ProjectLoader
+- [x] `palace attach` — Adjuntar a proyecto existente y cargar contexto
+- [x] `palace status` — Ver estado del proyecto
+- [x] `palace list` — Listar proyectos
 
-#### Mejoras de CLI
-- [ ] Añadir colores y formato con Rich
+#### Tareas
+- [x] `palace run` — Ejecutar tarea con opciones `--project`, `--agent`, `--session`, `--verbose`
+
+#### Agentes
+- [x] `palace agents` — Listar agentes dinámicamente desde el Orchestrator
+- [x] `palace info` — Información detallada de agente con datos reales
+
+#### Memoria
+- [x] `palace memory query` — Búsqueda semántica con `--type`, `--top`, `--project`
+- [x] `palace memory add` — Añadir entrada con tipo y metadatos
+
+#### Sesiones
+- [x] `palace session new` — Crear sesión (integrado con ContextManager)
+- [x] `palace session history` — Ver historial con `--limit`
+
+#### Configuración
+- [x] `palace config` — Ver configuración actual
+
+#### Modo interactivo
+- [x] `palace interactive` — REPL con carga de contexto del proyecto
+
+### Mejoras Pendientes (Baja Prioridad)
 - [ ] Implementar autocompletado para shells (bash, zsh, fish)
-- [ ] Añadir comandos de ayuda contextual
-- [ ] Implementar modo interactivo (REPL)
 - [ ] Añadir exportación de resultados (JSON, YAML, markdown)
 - [ ] Implementar logging verbose/debug con niveles
-
-#### Integración con API
-- [ ] Conectar comandos CLI con API REST
-- [ ] Implementar fallback a modo local si API no disponible
-- [ ] Añadir opción para especificar endpoint de API
+- [ ] Conectar comandos CLI con API REST como alternativa
+- [ ] Tests de CLI para cada comando
 
 ---
 
@@ -297,11 +309,11 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ## 🚀 Próximos Pasos (Roadmap)
 
-### Fase 1 - Funcionalidad Básica (Alta Prioridad) ✅ Módulos 4 y 6 completados
+### Fase 1 - Funcionalidad Básica (Alta Prioridad) ✅ Completada
 1. ~~Completar agentes (Módulo 4)~~ ✅ Completado
 2. ~~Completar contexto (Módulo 6)~~ ✅ Completado
-3. Implementar endpoints API esenciales (Módulo 8) - **Siguiente paso**
-4. Implementar comandos CLI esenciales (Módulo 9)
+3. ~~Implementar endpoints API esenciales (Módulo 8)~~ ✅ Completado
+4. ~~Implementar comandos CLI esenciales (Módulo 9)~~ ✅ Completado
 
 ### Fase 2 - Funcionalidad Avanzada (Media Prioridad)
 1. Implementar pipelines (Módulo 7)
@@ -340,4 +352,4 @@ Todos los agentes han sido implementados con los métodos `run`, `can_handle` y 
 
 ---
 
-**Nota:** Este documento se actualizó el 2025-04-09. Los **Módulos 4 (Agentes) y 6 (Contexto)** fueron completados. El siguiente paso son los **Módulos 8 (API) y 9 (CLI)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.
+**Nota:** Este documento se actualizó el 2025-04-09. Los **Módulos 4, 6, 8 y 9** fueron completados. Los siguientes pasos son el **Módulo 7 (Pipeline)** y el **Módulo 11 (Refinamiento)**. Referirse a [terminado.md](./terminado.md) para ver el progreso actual.
