@@ -172,15 +172,48 @@ echo  Configurando acceso global al comando 'palace'...
 
 set "SCRIPTS_PATH=%PALACE_VENV%\Scripts"
 
-:: Usamos PowerShell para añadir la ruta al PATH del usuario de forma segura
-powershell -Command "[string]$oldPath = [Environment]::GetEnvironmentVariable('Path', 'User'); $newPath = '%SCRIPTS_PATH%'; if ($oldPath -notlike '*' + $newPath + '*') { [Environment]::SetEnvironmentVariable('Path', $oldPath + ';' + $newPath, 'User') }" >nul 2>&1
+echo  Ruta a registrar: %SCRIPTS_PATH%
+echo.
 
-if %errorlevel% equ 0 (
-    echo  ✅ Comando 'palace' registrado globalmente.
-    echo     ⚠️  IMPORTANTE: Debes REINICIAR tu terminal para que el cambio surta efecto.
+:: Verificar si la ruta ya existe en el PATH del usuario
+set "ALREADY_IN_PATH=0"
+
+:: Leer solo el PATH del usuario (HKCU\Environment) de forma segura
+for /f "tokens=2,*" %%a in ('reg query "HKCU\Environment" /v PATH 2^>nul') do set "USER_PATH=%%b"
+
+:: Verificar si SCRIPTS_PATH ya está en USER_PATH
+if defined USER_PATH (
+    echo %USER_PATH% | findstr /i /c:"%SCRIPTS_PATH%" >nul 2>&1
+    if not errorlevel 1 (
+        set "ALREADY_IN_PATH=1"
+    )
+)
+
+if "%ALREADY_IN_PATH%"=="1" (
+    echo  ✅ La ruta ya está en el PATH del usuario.
 ) else (
-    echo  ⚠️  No se pudo registrar el comando global automáticamente.
-    echo     Podrás usar el archivo 'palace-iniciar.bat' en tu proyecto.
+    :: Agregar la ruta al PATH del usuario usando setx
+    if defined USER_PATH (
+        setx PATH "%USER_PATH%;%SCRIPTS_PATH%" >nul 2>&1
+    ) else (
+        setx PATH "%SCRIPTS_PATH%" >nul 2>&1
+    )
+
+    if %errorlevel% equ 0 (
+        echo  ✅ Comando 'palace' registrado globalmente.
+        echo.
+        echo  ╔══════════════════════════════════════════════════════╗
+        echo  ║  ⚠️  IMPORTANTE: Debés REINICIAR tu terminal       ║
+        echo  ║  para que el comando 'palace' funcione.            ║
+        echo  ╚══════════════════════════════════════════════════════╝
+    ) else (
+        echo  ⚠️  No se pudo registrar el comando global automáticamente.
+        echo     Intentá ejecutar manualmente en PowerShell:
+        echo     setx PATH "%%PATH%%;%SCRIPTS_PATH%"
+        echo.
+        echo     Mientras tanto, podés usar el archivo 'palace-iniciar.bat'
+        echo     que se creará en tu proyecto.
+    )
 )
 echo.
 pause
