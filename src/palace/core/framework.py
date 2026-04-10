@@ -81,7 +81,6 @@ class PalaceFramework:
             memory_store=self._memory_store,
             context_manager=self._context_manager,
         )
-        await self._orchestrator.initialize()
 
         self._initialized = True
 
@@ -157,8 +156,6 @@ class PalaceFramework:
 
         Closes all resources, connections, and cleanup tasks.
         """
-        if self._orchestrator:
-            await self._orchestrator.shutdown()
         if self._context_manager:
             await self._context_manager.shutdown()
         if self._memory_store:
