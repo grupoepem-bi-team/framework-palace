@@ -161,7 +161,7 @@ class MemoryConfig(BaseSettings):
     )
 
     store_type: Literal["zep", "sqlite", "chroma"] = Field(
-        default="zep",
+        default="sqlite",
         description="Type of memory store to use",
     )
     local_memory_path: str = Field(

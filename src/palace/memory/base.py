@@ -712,9 +712,51 @@ class MemoryStore:
 
     # Delegate methods to underlying store
 
-    async def store(self, entry: MemoryEntry) -> str:
-        """Store a memory entry."""
-        return await self._require_store().store(entry)
+    async def store(
+        self,
+        entry: Optional[MemoryEntry] = None,
+        *,
+        project_id: Optional[str] = None,
+        content: Optional[str] = None,
+        memory_type: Optional[MemoryType] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        source: Optional[str] = None,
+        source_id: Optional[str] = None,
+        priority: Optional[MemoryPriority] = None,
+    ) -> str:
+        """Store a memory entry.
+
+        Accepts either a MemoryEntry object or keyword arguments.
+        If a MemoryEntry is provided, it is used directly.
+        If keyword arguments are provided, a MemoryEntry is constructed.
+
+        Args:
+            entry: Optional MemoryEntry object
+            project_id: Project this entry belongs to
+            content: The actual content (text)
+            memory_type: Type of memory
+            metadata: Additional metadata
+            source: Where this entry came from
+            source_id: ID of the source object
+            priority: Priority for eviction decisions
+
+        Returns:
+            The unique ID of the stored entry
+        """
+        if entry is not None:
+            return await self._require_store().store(entry)
+
+        # Construct MemoryEntry from keyword arguments
+        memory_entry = MemoryEntry(
+            project_id=project_id or "",
+            content=content or "",
+            memory_type=memory_type or MemoryType.EPISODIC,
+            metadata=metadata or {},
+            source=source or "unknown",
+            source_id=source_id,
+            priority=priority or MemoryPriority.NORMAL,
+        )
+        return await self._require_store().store(memory_entry)
 
     async def store_batch(self, entries: List[MemoryEntry]) -> List[str]:
         """Store multiple entries."""
