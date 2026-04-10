@@ -724,9 +724,64 @@ class MemoryStore:
         """Retrieve an entry by ID."""
         return await self._require_store().retrieve(entry_id)
 
-    async def search(self, query: SearchQuery) -> List[SearchResult]:
-        """Search for entries."""
-        return await self._require_store().search(query)
+    async def search(
+        self,
+        query: Optional[SearchQuery] = None,
+        *,
+        project_id: Optional[str] = None,
+        query_text: Optional[str] = None,
+        memory_type: Optional[MemoryType] = None,
+        memory_types: Optional[List[MemoryType]] = None,
+        top_k: int = 5,
+        min_score: float = 0.0,
+        filters: Optional[Dict[str, Any]] = None,
+        strategy: SearchStrategy = SearchStrategy.SIMILARITY,
+        include_expired: bool = False,
+    ) -> List[SearchResult]:
+        """Search for entries.
+
+        Accepts either a SearchQuery object or keyword arguments.
+        If a SearchQuery is provided, it is used directly.
+        If keyword arguments are provided, a SearchQuery is constructed.
+
+        Args:
+            query: Optional SearchQuery object
+            project_id: Optional project scope
+            query_text: Text query string (used if query is not a SearchQuery)
+            memory_type: Single memory type to search (converted to list)
+            memory_types: List of memory types to search
+            top_k: Maximum number of results
+            min_score: Minimum similarity score
+            filters: Additional metadata filters
+            strategy: Search strategy to use
+            include_expired: Whether to include expired entries
+
+        Returns:
+            List of search results
+        """
+        if query is not None:
+            search_query = query
+        else:
+            # Handle query_text or fall back to empty string
+            text = query_text or ""
+
+            # Handle memory_type (singular) -> memory_types (plural)
+            types = memory_types or []
+            if memory_type is not None and memory_type not in types:
+                types = [memory_type] + types if not types else types
+
+            search_query = SearchQuery(
+                query=text,
+                project_id=project_id,
+                memory_types=types if types else [MemoryType.EPISODIC],
+                filters=filters or {},
+                top_k=top_k,
+                min_score=min_score,
+                strategy=strategy,
+                include_expired=include_expired,
+            )
+
+        return await self._require_store().search(search_query)
 
     async def delete(self, entry_id: str) -> bool:
         """Delete an entry."""

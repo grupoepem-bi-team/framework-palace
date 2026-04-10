@@ -80,7 +80,6 @@ class PalaceFramework:
         self._orchestrator = Orchestrator(
             memory_store=self._memory_store,
             context_manager=self._context_manager,
-            settings=self.settings,
         )
         await self._orchestrator.initialize()
 
