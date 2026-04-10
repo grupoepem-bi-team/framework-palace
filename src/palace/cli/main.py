@@ -26,6 +26,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from palace.context.initializer import ProjectInitializer
 from palace.context.loader import ProjectLoader
 from palace.core.config import get_settings
 from palace.core.framework import PalaceFramework
@@ -68,95 +69,72 @@ def run_async(coro):
 
 @app.command("init")
 def init_project(
-    name: str = typer.Argument(..., help="Project name"),
-    description: Optional[str] = typer.Option(None, "--desc", "-d", help="Project description"),
-    backend: Optional[str] = typer.Option(None, "--backend", "-b", help="Backend framework"),
-    frontend: Optional[str] = typer.Option(None, "--frontend", "-f", help="Frontend framework"),
-    database: Optional[str] = typer.Option(None, "--db", help="Database type"),
-    path: Optional[str] = typer.Option(None, "--path", "-p", help="Path to project directory"),
+    name: Optional[str] = typer.Argument(
+        None, help="Project name (optional, defaults to current folder name)"
+    ),
+    path: Optional[str] = typer.Option(
+        None, "--path", "-p", help="Path to project directory (defaults to current directory)"
+    ),
 ):
     """
-    Initialize a new Palace project.
+    Zero-Friction Project Initialization.
 
-    Creates a new project with the specified configuration and
-    initializes its context in the memory store.
+    Automatically analyzes the codebase, generates AI context files,
+    and registers the project in the Palace Framework.
 
-    Examples:
-        palace init my-api
-        palace init my-app --backend fastapi --db postgresql
-        palace init my-app --path /path/to/project
+    Example:
+        palace init
+        palace init my-awesome-app
     """
-    console.print(f"[bold blue]Initializing project:[/] {name}")
+    project_path = Path(path) if path else Path.cwd()
+    project_id = name if name else project_path.name
+
+    console.print(
+        Panel(
+            f"🚀 [bold blue]Palace Zero-Friction Initialization[/]\n"
+            f"Target Project: [yellow]{project_id}[/]\n"
+            f"Path: [yellow]{project_path}[/]",
+            title="Initializing...",
+            border_style="blue",
+        )
+    )
 
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task("Creating project...", total=None)
+        task = progress.add_task("Analyzing codebase...", total=None)
 
         try:
             framework = get_framework()
+            initializer = ProjectInitializer(framework)
 
-            # Create project configuration
-            config = {}
-            if backend:
-                config["backend_framework"] = backend
-            if frontend:
-                config["frontend_framework"] = frontend
-            if database:
-                config["database"] = database
+            # Execute the automatic initialization process
+            result_id = run_async(initializer.initialize(project_path))
 
-            project_id = name.lower().replace(" ", "-")
+            progress.update(task, description="[bold green]Project initialized successfully![/]")
 
-            # Create project using context_manager directly
-            context = run_async(
-                framework._context_manager.create_project(
-                    project_id=project_id,
-                    name=name,
-                    description=description,
-                    config=config,
-                )
-            )
-
-            progress.update(task, description="Project created!")
-
-            # Attempt to load project context files from /ai_context/
-            context_files_loaded = []
-            project_path = Path(path) if path else Path.cwd() / project_id
-            try:
-                loader = ProjectLoader(project_path=project_path)
-                _ = run_async(loader.load())
-                if loader.is_loaded:
-                    context_files_loaded = loader.loaded_files
-                    progress.update(
-                        task,
-                        description=f"Loaded {len(context_files_loaded)} context files",
-                    )
-            except Exception:
-                # Context loading is optional — don't fail project creation
-                progress.update(task, description="Project created (no context files found)")
-
-            # Build success message
             success_msg = (
-                f"[bold green]Project '{name}' created successfully![/]\n\n"
-                f"Project ID: {context.config.project_id}\n"
+                f"[bold green]✨ Project '{result_id}' is now ready![/]\n\n"
+                f"✅ Analysis complete\n"
+                f"✅ Context files generated in [bold]/ai_context/[/]\n"
+                f"✅ Project registered in framework memory\n\n"
+                f"You can now start developing using:\n"
+                f'  [bold]palace run "your task description"[/]'
             )
-            if context_files_loaded:
-                success_msg += f"Context files loaded: {', '.join(context_files_loaded)}\n"
-            success_msg += "\nUse 'palace run' to execute tasks."
 
             console.print(
                 Panel.fit(
                     success_msg,
-                    title="[bold]Palace Project[/]",
+                    title="[bold]Initialization Complete[/]",
                     border_style="green",
                 )
             )
 
         except Exception as e:
             progress.stop()
-            console.print(f"[bold red]Error:[/] {e}")
+            console.print(f"[bold red]Error during initialization:[/] {e}")
             raise typer.Exit(1)
 
 
