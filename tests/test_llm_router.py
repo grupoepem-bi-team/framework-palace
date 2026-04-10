@@ -507,22 +507,22 @@ class TestRoleMapper:
 
     def test_default_role_mapping_values(self):
         mapper = RoleMapper()
-        assert mapper.get_model(AgentRole.ORCHESTRATOR) == "qwen3.5"
-        assert mapper.get_model(AgentRole.BACKEND) == "qwen3-coder-next"
-        assert mapper.get_model(AgentRole.FRONTEND) == "qwen3-coder-next"
-        assert mapper.get_model(AgentRole.DEVOPS) == "qwen3.5"
-        assert mapper.get_model(AgentRole.INFRA) == "qwen3-coder-next"
-        assert mapper.get_model(AgentRole.DBA) == "deepseek-v3.2"
-        assert mapper.get_model(AgentRole.QA) == "gemma4:31b"
-        assert mapper.get_model(AgentRole.DESIGNER) == "mistral-large"
-        assert mapper.get_model(AgentRole.REVIEWER) == "mistral-large"
+        assert mapper.get_model(AgentRole.ORCHESTRATOR) == "qwen3.5:cloud"
+        assert mapper.get_model(AgentRole.BACKEND) == "qwen3-coder-next:cloud"
+        assert mapper.get_model(AgentRole.FRONTEND) == "qwen3-coder-next:cloud"
+        assert mapper.get_model(AgentRole.DEVOPS) == "qwen3.5:cloud"
+        assert mapper.get_model(AgentRole.INFRA) == "qwen3-coder-next:cloud"
+        assert mapper.get_model(AgentRole.DBA) == "deepseek-v3.2:cloud"
+        assert mapper.get_model(AgentRole.QA) == "gemma4:31b-cloud"
+        assert mapper.get_model(AgentRole.DESIGNER) == "mistral-large-3:675b-cloud"
+        assert mapper.get_model(AgentRole.REVIEWER) == "mistral-large-3:675b-cloud"
 
     def test_custom_mapping_overrides_default(self):
         custom = {AgentRole.BACKEND: "custom-backend-model"}
         mapper = RoleMapper(custom_mapping=custom)
         assert mapper.get_model(AgentRole.BACKEND) == "custom-backend-model"
         # Other roles still use defaults
-        assert mapper.get_model(AgentRole.ORCHESTRATOR) == "qwen3.5"
+        assert mapper.get_model(AgentRole.ORCHESTRATOR) == "qwen3.5:cloud"
 
     def test_get_fallback_models(self):
         mapper = RoleMapper()
@@ -530,7 +530,7 @@ class TestRoleMapper:
         assert isinstance(fallbacks, list)
         assert len(fallbacks) > 0
         # Default fallbacks for orchestrator
-        assert "qwen3-coder-next" in fallbacks
+        assert "qwen3-coder-next:cloud" in fallbacks
 
     def test_get_fallback_models_all_roles(self):
         mapper = RoleMapper()
@@ -561,7 +561,7 @@ class TestRoleMapper:
         """When a role is not in the mapping, get_model should fall back to ORCHESTRATOR."""
         mapper = RoleMapper()
         # All default roles have mappings; the implementation uses ORCHESTRATOR as default.
-        assert mapper.get_model(AgentRole.ORCHESTRATOR) == "qwen3.5"
+        assert mapper.get_model(AgentRole.ORCHESTRATOR) == "qwen3.5:cloud"
 
 
 # =====================================================================
@@ -837,37 +837,37 @@ class TestLLMRouterRouteByRole:
         model = router.route_by_role(AgentRole.ORCHESTRATOR)
         assert model is not None
         assert isinstance(model, ModelConfig)
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_route_backend_role(self):
         router = self._create_router()
         model = router.route_by_role(AgentRole.BACKEND)
         assert model is not None
-        assert model.name == "qwen3-coder-next"
+        assert model.name == "qwen3-coder-next:cloud"
 
     def test_route_dba_role(self):
         router = self._create_router()
         model = router.route_by_role(AgentRole.DBA)
         assert model is not None
-        assert model.name == "deepseek-v3.2"
+        assert model.name == "deepseek-v3.2:cloud"
 
     def test_route_qa_role(self):
         router = self._create_router()
         model = router.route_by_role(AgentRole.QA)
         assert model is not None
-        assert model.name == "gemma4:31b"
+        assert model.name == "gemma4:31b-cloud"
 
     def test_route_reviewer_role(self):
         router = self._create_router()
         model = router.route_by_role(AgentRole.REVIEWER)
         assert model is not None
-        assert model.name == "mistral-large"
+        assert model.name == "mistral-large-3:675b-cloud"
 
     def test_route_by_string_role(self):
         router = self._create_router()
         model = router.route_by_role("backend")
         assert model is not None
-        assert model.name == "qwen3-coder-next"
+        assert model.name == "qwen3-coder-next:cloud"
 
     def test_route_invalid_string_role_raises_error(self):
         router = self._create_router()
@@ -878,7 +878,7 @@ class TestLLMRouterRouteByRole:
     def test_route_role_with_fallback(self):
         router = self._create_router()
         # Make primary model unavailable
-        router.update_model_availability("qwen3.5", available=False)
+        router.update_model_availability("qwen3.5:cloud", available=False)
 
         # Should fall back to a fallback model
         model = router.route_by_role(AgentRole.ORCHESTRATOR, fallback=True)
@@ -887,7 +887,7 @@ class TestLLMRouterRouteByRole:
 
     def test_route_role_no_fallback_primary_unavailable(self):
         router = self._create_router()
-        router.update_model_availability("qwen3.5", available=False)
+        router.update_model_availability("qwen3.5:cloud", available=False)
         # With fallback=False, this should raise since primary is unavailable
         with pytest.raises(Exception):
             router.route_by_role(AgentRole.ORCHESTRATOR, fallback=False)
@@ -1080,9 +1080,9 @@ class TestLLMRouterModelManagement:
 
     def test_get_model(self):
         router = self._create_router()
-        model = router.get_model("qwen3.5")
+        model = router.get_model("qwen3.5:cloud")
         assert model is not None
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_get_model_not_found_raises(self):
         router = self._create_router()
@@ -1106,28 +1106,28 @@ class TestLLMRouterModelManagement:
     def test_update_model_availability(self):
         router = self._create_router()
         # Make a model unavailable
-        router.update_model_availability("qwen3.5", available=False)
-        model = router.get_model("qwen3.5")
+        router.update_model_availability("qwen3.5:cloud", available=False)
+        model = router.get_model("qwen3.5:cloud")
         assert model.available is False
 
         # Make it available again
-        router.update_model_availability("qwen3.5", available=True)
-        model = router.get_model("qwen3.5")
+        router.update_model_availability("qwen3.5:cloud", available=True)
+        model = router.get_model("qwen3.5:cloud")
         assert model.available is True
 
     def test_set_role_model(self):
         router = self._create_router()
-        router.set_role_model(AgentRole.BACKEND, "deepseek-v3.2")
+        router.set_role_model(AgentRole.BACKEND, "deepseek-v3.2:cloud")
 
         model = router.route_by_role(AgentRole.BACKEND)
-        assert model.name == "deepseek-v3.2"
+        assert model.name == "deepseek-v3.2:cloud"
 
     def test_set_role_model_by_string(self):
         router = self._create_router()
-        router.set_role_model("backend", "qwen3.5")
+        router.set_role_model("backend", "qwen3.5:cloud")
 
         model = router.route_by_role(AgentRole.BACKEND)
-        assert model.name == "qwen3.5"
+        assert model.name == "qwen3.5:cloud"
 
     def test_set_role_model_nonexistent_model_raises(self):
         router = self._create_router()
@@ -1201,14 +1201,14 @@ class TestLLMRouterRoutingStats:
 
     def test_estimate_cost(self):
         router = self._create_router()
-        cost = router.estimate_cost("qwen3.5", input_tokens=1000, output_tokens=500)
+        cost = router.estimate_cost("qwen3.5:cloud", input_tokens=1000, output_tokens=500)
         assert isinstance(cost, float)
         assert cost >= 0
 
     def test_estimate_cost_known_model(self):
         router = self._create_router()
-        # qwen3.5: input_cost_per_1k=0.0001, output_cost_per_1k=0.0002
-        cost = router.estimate_cost("qwen3.5", input_tokens=10000, output_tokens=5000)
+        # qwen3.5:cloud: input_cost_per_1k=0.0001, output_cost_per_1k=0.0002
+        cost = router.estimate_cost("qwen3.5:cloud", input_tokens=10000, output_tokens=5000)
         expected = (10000 / 1000) * 0.0001 + (5000 / 1000) * 0.0002
         assert abs(cost - expected) < 0.0001
 
@@ -1260,7 +1260,7 @@ class TestLLMRouterGetModelForTask:
         model = router.get_model_for_task("Write some code", role=AgentRole.BACKEND)
         assert model is not None
         # When role is provided, it should use role-based routing
-        assert model.name == "qwen3-coder-next"
+        assert model.name == "qwen3-coder-next:cloud"
 
     def test_critical_keywords(self):
         router = self._create_router()
