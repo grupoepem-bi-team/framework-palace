@@ -359,8 +359,8 @@ class SecurityConfig(BaseSettings):
     )
 
     secret_key: str = Field(
-        default="change-me-in-production",
-        description="Secret key for JWT signing",
+        default="",
+        description="Secret key for JWT signing (required in production)",
     )
     api_key_header: str = Field(
         default="X-API-Key",
@@ -374,6 +374,28 @@ class SecurityConfig(BaseSettings):
         default=False,
         description="Require authentication for API endpoints",
     )
+
+    def get_secret_key(self) -> str:
+        """
+        Get the secret key with appropriate validation and warnings.
+
+        Returns:
+            The secret key value
+
+        Raises:
+            ValueError: If secret_key is empty in production
+        """
+        if self.is_production() and not self.secret_key:
+            raise ValueError(
+                "SECRET_KEY must be set in production environment. "
+                "Set it via environment variable: SECRET_KEY=your-secure-secret-key"
+            )
+        if self.secret_key == "change-me-in-production":
+            raise ValueError(
+                "Secret key is still using default value. "
+                "Please set a secure SECRET_KEY in production."
+            )
+        return self.secret_key or "dev-only-insecure-key"
 
 
 class Settings(BaseSettings):
@@ -433,6 +455,11 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development environment."""
         return self.environment == "development"
+
+    def model_post_init(self, __context) -> None:
+        """Validate security settings after initialization."""
+        # Security validation is now in SecurityConfig.get_secret_key()
+        pass
 
 
 @lru_cache

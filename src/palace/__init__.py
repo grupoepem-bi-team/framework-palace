@@ -1,3 +1,6 @@
+framework-palace/src/palace/__init__.py
+```
+```python
 """
 Palace Framework - Intelligent Multi-Agent Software Development System
 
@@ -8,10 +11,10 @@ A sophisticated multi-agent framework for software development with:
 - Project-scoped context management
 - FastAPI-based REST API
 - Command-line interface
-- Zep integration ready
 
 Architecture Layers:
-    - core: Base abstractions, interfaces, and shared types
+    - models: Domain types and Pydantic schemas (single source of truth)
+    - core: Base abstractions, exceptions, and shared types
     - agents: Specialized agent implementations
     - memory: Vector store and episodic memory management
     - context: Project context and session management
@@ -19,7 +22,7 @@ Architecture Layers:
     - cli: Command-line interface
     - pipelines: Workflow definitions and execution
     - tools: Shared tools and utilities
-    - models: Pydantic models and schemas
+    - llm: LLM client, router, and provider integration
 
 Usage:
     from palace import PalaceFramework
@@ -34,52 +37,68 @@ Version: 0.1.0
 __version__ = "0.1.0"
 __author__ = "Palace Framework Team"
 
-# Core types - always safe to import (no side effects)
-# Core exceptions - always safe to import
-from palace.core.exceptions import PalaceError
-from palace.core.types import (
+# =============================================================================
+# Domain Types (Single Source of Truth - models/domain_types.py)
+# =============================================================================
+from palace.models.domain_types import (
     AgentCapability,
+    AgentRole,
+    MemoryType,
+    MessageType,
+    ProjectStatus,
+    SessionStatus,
+    TaskPriority,
+    TaskStatus,
+)
+
+# =============================================================================
+# Core Exceptions
+# =============================================================================
+from palace.core.exceptions import PalaceError
+
+# =============================================================================
+# Dataclasses (core/types.py for backward compatibility)
+# =============================================================================
+from palace.core.types import (
     AgentConfig,
     AgentResult,
-    AgentRole,
+    ModelConfig,
     MemoryEntry,
-    MemoryType,
     Message,
-    MessageType,
     ProjectConfig,
     ProjectContext,
     SessionContext,
     TaskDefinition,
-    TaskPriority,
     TaskResult,
-    TaskStatus,
 )
 
-# Core types - dataclasses
-from palace.core.types import ModelConfig as TypesModelConfig
-
+# =============================================================================
 # Public API
+# =============================================================================
 __all__ = [
     # Version info
     "__version__",
     "__author__",
-    # Types
-    "AgentCapability",
+    # Domain Types (re-exported)
     "AgentRole",
-    "AgentConfig",
-    "AgentResult",
+    "TaskStatus",
+    "TaskPriority",
     "MemoryType",
     "MessageType",
-    "Message",
+    "AgentCapability",
+    "ProjectStatus",
+    "SessionStatus",
+    # Dataclasses
+    "AgentConfig",
+    "AgentResult",
+    "ModelConfig",
     "MemoryEntry",
+    "Message",
     "ProjectConfig",
     "ProjectContext",
     "SessionContext",
     "TaskDefinition",
-    "TaskPriority",
-    "TaskStatus",
     "TaskResult",
-    "ModelConfig",
     # Exceptions
     "PalaceError",
 ]
