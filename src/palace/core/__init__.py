@@ -101,14 +101,6 @@ from palace.core.logging_config import (
     unbind_context,
 )
 
-# Memory quality
-from palace.core.memory_quality import (
-    CleanupPolicy,
-    MemoryCleanupTask,
-    MemoryQualityChecker,
-    QualityScore,
-)
-
 # Resilience patterns
 from palace.core.resilience import (
     CircuitBreaker,
@@ -230,11 +222,6 @@ __all__ = [
     "RetryConfig",
     "RetryWithBackoff",
     "retry",
-    # Memory quality
-    "QualityScore",
-    "CleanupPolicy",
-    "MemoryQualityChecker",
-    "MemoryCleanupTask",
     # Logging
     "LogLevel",
     "configure_logging",

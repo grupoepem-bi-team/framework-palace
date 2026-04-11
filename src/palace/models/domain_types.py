@@ -20,10 +20,6 @@ from enum import Enum
 from typing import Protocol
 
 
-# =============================================================================
-# Agent Roles
-# =============================================================================
-
 class AgentRole(str, Enum):
     """Roles that agents can play in the system."""
 
@@ -38,10 +34,6 @@ class AgentRole(str, Enum):
     REVIEWER = "reviewer"
 
 
-# =============================================================================
-# Task Status
-# =============================================================================
-
 class TaskStatus(str, Enum):
     """Status of a task in the execution pipeline."""
 
@@ -55,10 +47,6 @@ class TaskStatus(str, Enum):
     DELEGATED = "delegated"
 
 
-# =============================================================================
-# Task Priority
-# =============================================================================
-
 class TaskPriority(int, Enum):
     """Priority levels for task scheduling."""
 
@@ -67,10 +55,6 @@ class TaskPriority(int, Enum):
     HIGH = 10
     CRITICAL = 20
 
-
-# =============================================================================
-# Memory Type
-# =============================================================================
 
 class MemoryType(str, Enum):
     """Types of memory storage."""
@@ -81,10 +65,6 @@ class MemoryType(str, Enum):
     PROJECT = "project"
 
 
-# =============================================================================
-# Message Type
-# =============================================================================
-
 class MessageType(str, Enum):
     """Types of messages in conversations."""
 
@@ -94,37 +74,20 @@ class MessageType(str, Enum):
     TOOL = "tool"
 
 
-# =============================================================================
-# Agent Capability
-# =============================================================================
-
 class AgentCapability(str, Enum):
-    """
-    Skills and competencies that agents can have.
-    """
+    """Skills and competencies that agents can have."""
 
-    # Development capabilities
     BACKEND_DEVELOPMENT = "backend_development"
     FRONTEND_DEVELOPMENT = "frontend_development"
     FULLSTACK_DEVELOPMENT = "fullstack_development"
-
-    # Infrastructure capabilities
     INFRASTRUCTURE_AS_CODE = "infrastructure_as_code"
     DEVOPS = "devops"
     DATABASE_ADMINISTRATION = "database_administration"
-
-    # Quality capabilities
     CODE_REVIEW = "code_review"
     TESTING = "testing"
     QUALITY_ASSURANCE = "quality_assurance"
-
-    # Design capabilities
     UI_UX_DESIGN = "ui_ux_design"
 
-
-# =============================================================================
-# Project Status
-# =============================================================================
 
 class ProjectStatus(str, Enum):
     """Status of a project."""
@@ -135,10 +98,6 @@ class ProjectStatus(str, Enum):
     DELETED = "deleted"
 
 
-# =============================================================================
-# Session Status
-# =============================================================================
-
 class SessionStatus(str, Enum):
     """Status of a conversation session."""
 
@@ -147,15 +106,8 @@ class SessionStatus(str, Enum):
     EXPIRED = "expired"
 
 
-# =============================================================================
-# Utility Protocol
-# =============================================================================
-
 class Identifiable(Protocol):
     """Protocol for objects with an ID."""
 
     @property
     def id(self) -> str: ...
-```
-
----

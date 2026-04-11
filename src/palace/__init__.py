@@ -1,6 +1,3 @@
-framework-palace/src/palace/__init__.py
-```
-```python
 """
 Palace Framework - Intelligent Multi-Agent Software Development System
 
@@ -40,17 +37,6 @@ __author__ = "Palace Framework Team"
 # =============================================================================
 # Domain Types (Single Source of Truth - models/domain_types.py)
 # =============================================================================
-from palace.models.domain_types import (
-    AgentCapability,
-    AgentRole,
-    MemoryType,
-    MessageType,
-    ProjectStatus,
-    SessionStatus,
-    TaskPriority,
-    TaskStatus,
-)
-
 # =============================================================================
 # Core Exceptions
 # =============================================================================
@@ -62,14 +48,24 @@ from palace.core.exceptions import PalaceError
 from palace.core.types import (
     AgentConfig,
     AgentResult,
-    ModelConfig,
     MemoryEntry,
     Message,
+    ModelConfig,
     ProjectConfig,
     ProjectContext,
     SessionContext,
     TaskDefinition,
     TaskResult,
+)
+from palace.models.domain_types import (
+    AgentCapability,
+    AgentRole,
+    MemoryType,
+    MessageType,
+    ProjectStatus,
+    SessionStatus,
+    TaskPriority,
+    TaskStatus,
 )
 
 # =============================================================================
