@@ -43,6 +43,11 @@ __author__ = "Palace Framework Team"
 from palace.core.exceptions import PalaceError
 
 # =============================================================================
+# Public API
+# =============================================================================
+from palace.core.framework import PalaceFramework
+
+# =============================================================================
 # Dataclasses (core/types.py for backward compatibility)
 # =============================================================================
 from palace.core.types import (
@@ -68,13 +73,12 @@ from palace.models.domain_types import (
     TaskStatus,
 )
 
-# =============================================================================
-# Public API
-# =============================================================================
 __all__ = [
     # Version info
     "__version__",
     "__author__",
+    # Framework entry point
+    "PalaceFramework",
     # Domain Types (re-exported)
     "AgentRole",
     "TaskStatus",
