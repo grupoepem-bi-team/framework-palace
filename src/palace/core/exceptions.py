@@ -18,7 +18,7 @@ Hierarchy:
     │   ├── TaskRoutingError
     │   ├── TaskExecutionError
     │   └── WorkflowError
-    ├── MemoryError
+    ├── PalaceMemoryError
     │   ├── MemoryStoreError
     │   ├── MemoryRetrievalError
     │   └── EmbeddingError
@@ -291,13 +291,13 @@ class WorkflowError(OrchestratorError):
 # =============================================================================
 
 
-class MemoryError(PalaceError):
+class PalaceMemoryError(PalaceError):
     """Base exception for memory-related errors."""
 
     pass
 
 
-class MemoryStoreError(MemoryError):
+class MemoryStoreError(PalaceMemoryError):
     """Raised when storing data in memory fails."""
 
     def __init__(
@@ -318,7 +318,7 @@ class MemoryStoreError(MemoryError):
         super().__init__(message, code="MEMORY_STORE_ERROR", details=details)
 
 
-class MemoryRetrievalError(MemoryError):
+class MemoryRetrievalError(PalaceMemoryError):
     """Raised when retrieving data from memory fails."""
 
     def __init__(
@@ -335,7 +335,7 @@ class MemoryRetrievalError(MemoryError):
         super().__init__(message, code="MEMORY_RETRIEVAL_ERROR", details=details)
 
 
-class EmbeddingError(MemoryError):
+class EmbeddingError(PalaceMemoryError):
     """Raised when embedding generation fails."""
 
     def __init__(

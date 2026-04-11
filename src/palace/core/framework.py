@@ -89,7 +89,6 @@ class PalaceFramework:
         task: str,
         project_id: str,
         session_id: Optional[str] = None,
-        agent_hint: Optional[str] = None,
         context: Optional[dict] = None,
     ) -> "ExecutionResult":
         """
@@ -102,7 +101,6 @@ class PalaceFramework:
             task: The task description or prompt
             project_id: Project identifier for context isolation
             session_id: Optional session identifier for conversation continuity
-            agent_hint: Optional hint for which agent to use
             context: Additional context data for the task
 
         Returns:
@@ -115,12 +113,25 @@ class PalaceFramework:
         if not self._initialized:
             await self.initialize()
 
-        return await self._orchestrator.execute_task(
+        result = await self._orchestrator.execute(
             task=task,
             project_id=project_id,
             session_id=session_id,
-            agent_hint=agent_hint,
-            context=context,
+            context_override=context,
+        )
+
+        agent_used = ""
+        if result.agent_results:
+            agent_role = result.agent_results[0].agent
+            agent_used = agent_role.value if hasattr(agent_role, "value") else str(agent_role)
+
+        return ExecutionResult(
+            task_id=result.task_id,
+            status=result.status.value if hasattr(result.status, "value") else str(result.status),
+            result=result.content,
+            agent_used=agent_used,
+            execution_time=result.execution_time_ms / 1000.0 if result.execution_time_ms else 0.0,
+            metadata=result.metadata,
         )
 
     async def get_project_status(self, project_id: str) -> "ProjectStatus":
@@ -136,7 +147,14 @@ class PalaceFramework:
         if not self._initialized:
             await self.initialize()
 
-        return await self._context_manager.get_project_status(project_id)
+        data = await self._context_manager.get_project_status(project_id)
+        return ProjectStatus(
+            project_id=data["project_id"],
+            status=data["status"],
+            active_tasks=data["active_tasks"],
+            last_activity=data["last_activity"] or "",
+            context_summary=data.get("context_summary"),
+        )
 
     async def list_agents(self) -> list[str]:
         """
@@ -161,6 +179,9 @@ class PalaceFramework:
         if self._memory_store:
             await self._memory_store.close()
 
+        self._orchestrator = None
+        self._context_manager = None
+        self._memory_store = None
         self._initialized = False
 
 

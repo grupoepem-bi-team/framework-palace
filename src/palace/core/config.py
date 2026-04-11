@@ -181,7 +181,7 @@ class MemoryConfig(BaseSettings):
         description="Collection name for vector store",
     )
     embedding_dimension: int = Field(
-        default=1536,
+        default=768,
         description="Dimension of embedding vectors",
     )
     chunk_size: int = Field(
@@ -228,7 +228,7 @@ class APIConfig(BaseSettings):
     )
 
     host: str = Field(
-        default="0.0.0.0",
+        default="127.0.0.1",
         description="API server host",
     )
     port: int = Field(
@@ -240,7 +240,7 @@ class APIConfig(BaseSettings):
         description="Enable debug mode",
     )
     cors_origins: list[str] = Field(
-        default=["*"],
+        default=[],
         description="Allowed CORS origins",
     )
     api_prefix: str = Field(

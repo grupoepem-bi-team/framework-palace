@@ -23,7 +23,7 @@ from uuid import UUID, uuid4
 
 import structlog
 
-from palace.core.exceptions import MemoryError, MemoryStoreError
+from palace.core.exceptions import MemoryStoreError, PalaceMemoryError
 from palace.core.types import MemoryEntry, MemoryType
 
 if TYPE_CHECKING:
@@ -1267,7 +1267,7 @@ class OllamaEmbedder(EmbedderBase):
             return data["embedding"]
         except Exception as e:
             logger.error("ollama_embed_failed", error=str(e))
-            raise MemoryError("embedding_generation_failed", str(e))
+            raise PalaceMemoryError("embedding_generation_failed", str(e))
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts."""

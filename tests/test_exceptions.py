@@ -26,7 +26,6 @@ from palace.core.exceptions import (
     ContextRetrievalError,
     EmbeddingError,
     InvalidConfigError,
-    MemoryError,
     MemoryRetrievalError,
     MemoryStoreError,
     MissingConfigError,
@@ -35,6 +34,7 @@ from palace.core.exceptions import (
     ModelResponseError,
     OrchestratorError,
     PalaceError,
+    PalaceMemoryError,
     PipelineError,
     PipelineExecutionError,
     PipelineNotFoundError,
@@ -116,19 +116,19 @@ class TestExceptionHierarchy:
     # --- Memory Errors ---
 
     def test_memory_error_inherits_palace_error(self):
-        assert issubclass(MemoryError, PalaceError)
+        assert issubclass(PalaceMemoryError, PalaceError)
 
     def test_memory_store_error_inherits_memory_error(self):
-        assert issubclass(MemoryStoreError, MemoryError)
+        assert issubclass(MemoryStoreError, PalaceMemoryError)
 
     def test_memory_store_error_inherits_palace_error(self):
         assert issubclass(MemoryStoreError, PalaceError)
 
     def test_memory_retrieval_error_inherits_memory_error(self):
-        assert issubclass(MemoryRetrievalError, MemoryError)
+        assert issubclass(MemoryRetrievalError, PalaceMemoryError)
 
     def test_embedding_error_inherits_memory_error(self):
-        assert issubclass(EmbeddingError, MemoryError)
+        assert issubclass(EmbeddingError, PalaceMemoryError)
 
     # --- Context Errors ---
 
@@ -502,10 +502,10 @@ class TestOrchestratorErrors:
 
 
 class TestMemoryErrors:
-    """Tests for MemoryError and its subclasses."""
+    """Tests for PalaceMemoryError and its subclasses."""
 
     def test_memory_error_basic(self):
-        err = MemoryError("memory subsystem error")
+        err = PalaceMemoryError("memory subsystem error")
         assert isinstance(err, PalaceError)
         assert err.message == "memory subsystem error"
 
@@ -553,7 +553,7 @@ class TestMemoryErrors:
         assert err.details["reason"] == "model overloaded"
 
     def test_catch_store_as_memory_error(self):
-        with pytest.raises(MemoryError):
+        with pytest.raises(PalaceMemoryError):
             raise MemoryStoreError("read", "IO error")
 
     def test_catch_retrieval_as_palace_error(self):
@@ -1050,7 +1050,7 @@ class TestToDict:
             (ConfigurationError, lambda: ConfigurationError("msg", code="X")),
             (AgentError, lambda: AgentError("agent1", "msg", code="X")),
             (OrchestratorError, lambda: OrchestratorError("msg", code="X")),
-            (MemoryError, lambda: MemoryError("msg", code="X")),
+            (PalaceMemoryError, lambda: PalaceMemoryError("msg", code="X")),
             (ContextError, lambda: ContextError("msg", code="X")),
             (ToolError, lambda: ToolError("tool1", "msg", code="X")),
             (APIError, lambda: APIError("msg", status_code=500, code="X")),

@@ -194,8 +194,8 @@ class ContextManager:
 
             # Extraer los project_ids del registro
             loaded_count = 0
-            for entry in registry_entries:
-                metadata = entry.get("metadata", {})
+            for result in registry_entries:
+                metadata = result.entry.metadata
                 if metadata.get("type") != "project_registry":
                     continue
 
@@ -383,10 +383,10 @@ class ContextManager:
 
             # Buscar la entrada de configuración principal
             config_entry = None
-            for entry in entries:
-                metadata = entry.get("metadata", {})
+            for result in entries:
+                metadata = result.entry.metadata
                 if metadata.get("type") == "project_config":
-                    config_entry = entry
+                    config_entry = result
                     break
 
             # Si no hay entrada etiquetada, usar la primera
@@ -396,7 +396,7 @@ class ContextManager:
             # Reconstruir ProjectContext desde el contenido almacenado
             import json
 
-            content = config_entry.get("content", "{}")
+            content = config_entry.entry.content
             try:
                 config_data = json.loads(content) if isinstance(content, str) else content
             except (json.JSONDecodeError, TypeError):
@@ -561,7 +561,7 @@ class ContextManager:
             raise ProjectNotFoundError(project_id=project_id)
 
         # Eliminar de memoria
-        await self._memory_store.delete_project(project_id)
+        await self._memory_store.delete_by_project(project_id)
 
         # Eliminar de caché y gestores
         if project_id in self._project_cache:
@@ -803,7 +803,7 @@ class ContextManager:
                 results.extend(entries)
 
             # Ordenar por relevancia y limitar
-            results = sorted(results, key=lambda x: x.get("score", 0), reverse=True)
+            results = sorted(results, key=lambda x: x.score, reverse=True)
             results = results[:top_k]
 
             logger.debug(
@@ -995,6 +995,31 @@ class ContextManager:
     # -------------------------------------------------------------------------
     # Ciclo de Vida
     # -------------------------------------------------------------------------
+
+    async def get_project_status(self, project_id: str) -> dict:
+        """
+        Get basic status information for a project.
+
+        Args:
+            project_id: ID of the project
+
+        Returns:
+            Dictionary with project status information
+
+        Raises:
+            ProjectNotFoundError: If the project does not exist
+        """
+        if project_id not in self._project_managers:
+            raise ProjectNotFoundError(project_id=project_id)
+
+        cached = self._project_cache.get(project_id)
+        return {
+            "project_id": project_id,
+            "status": "active",
+            "active_tasks": 0,
+            "last_activity": cached.last_updated.isoformat() if cached else None,
+            "context_summary": None,
+        }
 
     async def shutdown(self) -> None:
         """
